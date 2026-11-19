@@ -26,7 +26,7 @@ describe('tenant isolation', () => {
     await app.init();
 
     dataSource = app.get(DataSource);
-    await dataSource.query('TRUNCATE users, organizations, memberships, projects, tasks, user_sessions CASCADE');
+    await dataSource.query('TRUNCATE users, organizations, memberships, projects, tasks, invitations, user_sessions CASCADE');
 
     server = app.getHttpServer();
 
@@ -142,7 +142,7 @@ describe('role enforcement', () => {
     await app.init();
 
     dataSource = app.get(DataSource);
-    await dataSource.query('TRUNCATE users, organizations, memberships, projects, tasks, user_sessions CASCADE');
+    await dataSource.query('TRUNCATE users, organizations, memberships, projects, tasks, invitations, user_sessions CASCADE');
 
     server = app.getHttpServer();
 

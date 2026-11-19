@@ -3,8 +3,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
-import { Membership, Organization, Project, Task, User } from './entities';
+import { Invitation, Membership, Organization, Project, Task, User } from './entities';
 import { HealthController } from './health/health.controller';
+import { InvitationsModule } from './invitations/invitations.module';
+import { MailModule } from './mail/mail.module';
 import { OrgsModule } from './orgs/orgs.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
@@ -23,14 +25,16 @@ import { WebModule } from './web/web.module';
           type: 'postgres' as const,
           url,
           ssl: isLocal ? false : { rejectUnauthorized: false },
-          entities: [User, Organization, Membership, Project, Task],
+          entities: [User, Organization, Membership, Project, Task, Invitation],
           synchronize: false,
           autoLoadEntities: false,
         };
       },
     }),
     CommonModule,
+    MailModule,
     AuthModule,
+    InvitationsModule,
     OrgsModule,
     ProjectsModule,
     TasksModule,

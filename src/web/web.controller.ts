@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, Param, Post, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, Param, Post, Query, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { destroySession, establishSession } from '../auth/session.helpers';
@@ -7,6 +7,7 @@ import { AuthenticatedGuard } from '../common/guards/authenticated.guard';
 import { OrgAdminGuard } from '../common/guards/org-admin.guard';
 import { OrgMemberGuard } from '../common/guards/org-member.guard';
 import { httpExceptionMessage } from '../common/http-message';
+import { InvitationsService } from '../invitations/invitations.service';
 import { budgetSummary } from '../common/money';
 import { TaskStatus } from '../entities';
 import { OrgsService } from '../orgs/orgs.service';
@@ -28,6 +29,7 @@ export class WebController {
     private readonly orgsService: OrgsService,
     private readonly projectsService: ProjectsService,
     private readonly tasksService: TasksService,
+    private readonly invitationsService: InvitationsService,
   ) {}
 
   @Get()
@@ -143,10 +145,11 @@ export class WebController {
   @Get('orgs/:orgId')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard)
   async orgPage(@Req() request: Request, @Res() response: Response, @CurrentOrg() org: OrgContext): Promise<void> {
-    const [organization, projects, members] = await Promise.all([
+    const [organization, projects, members, invitations] = await Promise.all([
       this.orgsService.findById(org.organizationId),
       this.projectsService.listWithSpend(org.organizationId),
       this.orgsService.listMembers(org.organizationId),
+      this.invitationsService.listPending(org.organizationId),
     ]);
 
     const adminCount = members.filter((membership) => membership.role === 'admin').length;
@@ -163,6 +166,16 @@ export class WebController {
         taskCount: project.taskCount,
         ...budgetSummary(project.budgetEtb, project.spentEtb),
       })),
+      pendingInvitations: invitations.map((invitation) => ({
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        expiresAt: invitation.expiresAt.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+      })),
       members: members.map((membership) => ({
         userId: membership.userId,
         name: membership.user.name,
@@ -174,9 +187,9 @@ export class WebController {
     });
   }
 
-  @Post('orgs/:orgId/members')
+  @Post('orgs/:orgId/invitations')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
-  async addMember(
+  async invite(
     @Req() request: Request,
     @Res() response: Response,
     @CurrentOrg() org: OrgContext,
@@ -185,14 +198,101 @@ export class WebController {
     const result = await this.attempt(request, async () => {
       const email = requireEmail(body.email);
       const role = requireOneOf(body.role, ['admin', 'member'] as const, 'Role');
-      return this.orgsService.addMember(org.organizationId, email, role);
+
+      return this.invitationsService.invite(
+        org.organizationId,
+        request.session.userId as string,
+        email,
+        role,
+        this.baseUrl(request),
+      );
     });
 
     if (result.ok) {
-      setFlash(request, 'success', `${body.email} added as ${body.role}`);
+      if (result.value.outcome === 'added') {
+        setFlash(request, 'success', `${body.email} was already registered and has been added`);
+      } else if (result.value.outcome === 'emailed') {
+        setFlash(request, 'success', `Invitation sent to ${body.email}`);
+      } else {
+        setFlash(request, 'error', `Email is not configured. Invitation link: ${result.value.acceptUrl}`);
+      }
     }
 
     response.redirect(`/orgs/${org.organizationId}`);
+  }
+
+  @Post('orgs/:orgId/invitations/:invitationId/delete')
+  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  async revokeInvitation(
+    @Req() request: Request,
+    @Res() response: Response,
+    @CurrentOrg() org: OrgContext,
+    @Param('invitationId') invitationId: string,
+  ): Promise<void> {
+    const result = await this.attempt(request, () =>
+      this.invitationsService.revoke(org.organizationId, invitationId),
+    );
+
+    if (result.ok) {
+      setFlash(request, 'success', 'Invitation revoked');
+    }
+
+    response.redirect(`/orgs/${org.organizationId}`);
+  }
+
+  @Get('invitations/accept')
+  async acceptPage(
+    @Req() request: Request,
+    @Res() response: Response,
+    @Query('token') token: string,
+  ): Promise<void> {
+    const invitation = await this.invitationsService.findValidByToken(String(token ?? ''));
+    const existingUser = await this.authService.findByEmail(invitation.email);
+
+    response.render('accept', {
+      ...this.baseLocals(request),
+      title: `Join ${invitation.organization.name}`,
+      token,
+      email: invitation.email,
+      role: invitation.role,
+      organizationName: invitation.organization.name,
+      inviterName: invitation.invitedBy.name,
+      needsAccount: !existingUser,
+      signedInAsInvitee: Boolean(existingUser) && request.session.userId === existingUser?.id,
+    });
+  }
+
+  @Post('invitations/accept')
+  async acceptInvitation(
+    @Req() request: Request,
+    @Res() response: Response,
+    @Body() body: Record<string, string>,
+  ): Promise<void> {
+    const token = String(body.token ?? '');
+    const invitation = await this.invitationsService.findValidByToken(token);
+    const existingUser = await this.authService.findByEmail(invitation.email);
+
+    if (existingUser && request.session.userId !== existingUser.id) {
+      setFlash(request, 'error', `Sign in as ${invitation.email} to accept this invitation`);
+      response.redirect('/login');
+      return;
+    }
+
+    const result = await this.attempt(request, () =>
+      this.invitationsService.accept(token, { name: body.name, password: body.password }),
+    );
+
+    if (!result.ok) {
+      response.redirect(`/invitations/accept?token=${encodeURIComponent(token)}`);
+      return;
+    }
+
+    if (!existingUser) {
+      await establishSession(request, result.value);
+    }
+
+    setFlash(request, 'success', `You have joined ${invitation.organization.name}`);
+    response.redirect(`/orgs/${invitation.organizationId}`);
   }
 
   @Post('orgs/:orgId/members/:userId/delete')
@@ -333,6 +433,16 @@ export class WebController {
     }
 
     response.redirect(`/orgs/${org.organizationId}/projects/${projectId}`);
+  }
+
+  private baseUrl(request: Request): string {
+    const configured = process.env.APP_URL;
+
+    if (configured) {
+      return configured.replace(/\/$/, '');
+    }
+
+    return `${request.protocol}://${request.get('host')}`;
   }
 
   private async attempt<T>(request: Request, action: () => Promise<T>): Promise<Attempt<T>> {
