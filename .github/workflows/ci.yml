@@ -1,0 +1,79 @@
+name: CI/CD
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Install, build and test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracker_test
+      DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracker_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tracker_test
+      SESSION_SECRET: continuous-integration-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Apply migrations to the test database
+        run: npm run migration:run
+
+      - name: Run tests
+        run: npm test
+
+  deploy:
+    name: Deploy to Render
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render deploy
+        run: curl --fail --silent --show-error --request POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+      - name: Wait for the live site to report this commit
+        run: |
+          for attempt in $(seq 1 60); do
+            reported=$(curl --silent --max-time 10 "${{ vars.LIVE_URL }}/healthz" | jq -r '.commit // empty')
+            if [ "$reported" = "$GITHUB_SHA" ]; then
+              echo "Live site is running $GITHUB_SHA"
+              exit 0
+            fi
+            echo "attempt $attempt: live site reports '${reported:-unreachable}'"
+            sleep 15
+          done
+          echo "Timed out waiting for the deploy to go live"
+          exit 1
