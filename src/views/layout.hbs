@@ -80,6 +80,17 @@
   .muted { color: var(--muted); }
   .crumb { font-size: 13px; margin-bottom: 14px; }
   .stack > * + * { margin-top: 10px; }
+  .toast {
+    position: fixed; top: 16px; right: 16px; z-index: 50; max-width: 360px;
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 11px 14px; border-radius: 9px; font-size: 14px; border: 1px solid;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.10); animation: toast-in 0.18s ease-out;
+  }
+  .toast.success { background: var(--accent-soft); border-color: #cfe4d8; color: var(--accent); }
+  .toast.error { background: var(--danger-soft); border-color: #f0cfcc; color: var(--danger); }
+  .toast-close { background: none; border: none; color: inherit; font-size: 18px; line-height: 1; padding: 0 0 0 6px; cursor: pointer; }
+  .toast-close:hover { opacity: 0.7; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }
 </style>
 </head>
 <body>
@@ -97,6 +108,12 @@
     {{/if}}
   </div>
 </header>
+{{#if flash}}
+  <div class="toast {{flash.type}}" role="status" aria-live="polite">
+    <span>{{flash.message}}</span>
+    <button class="toast-close" type="button" aria-label="Dismiss">&times;</button>
+  </div>
+{{/if}}
 <main>
 {{{body}}}
 </main>
@@ -155,6 +172,24 @@
     form.setAttribute('data-submitting', 'true');
     lock(form);
   });
+
+  var toast = document.querySelector('.toast');
+
+  if (toast) {
+    var dismiss = function () {
+      toast.style.transition = 'opacity 0.2s';
+      toast.style.opacity = '0';
+      window.setTimeout(function () { toast.remove(); }, 200);
+    };
+
+    var closer = toast.querySelector('.toast-close');
+
+    if (closer) {
+      closer.addEventListener('click', dismiss);
+    }
+
+    window.setTimeout(dismiss, 4500);
+  }
 
   window.addEventListener('pageshow', function (event) {
     if (event.persisted) {

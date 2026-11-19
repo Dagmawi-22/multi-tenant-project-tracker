@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, Param, Post, Req, Res, UseFilters, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { destroySession, establishSession } from '../auth/session.helpers';
@@ -6,15 +6,19 @@ import { CurrentOrg, OrgContext } from '../common/decorators/org-context.decorat
 import { AuthenticatedGuard } from '../common/guards/authenticated.guard';
 import { OrgAdminGuard } from '../common/guards/org-admin.guard';
 import { OrgMemberGuard } from '../common/guards/org-member.guard';
+import { httpExceptionMessage } from '../common/http-message';
 import { budgetSummary } from '../common/money';
 import { TaskStatus } from '../entities';
 import { OrgsService } from '../orgs/orgs.service';
 import { ProjectsService } from '../projects/projects.service';
 import { TasksService } from '../tasks/tasks.service';
+import { popFlash, setFlash } from './flash';
 import { optionalText, requireEmail, requireMoney, requireOneOf, requireText } from './form';
 import { WebExceptionFilter } from './web-exception.filter';
 
 const TASK_STATUSES = ['todo', 'in_progress', 'done'] as const;
+
+type Attempt<T> = { ok: true; value: T } | { ok: false };
 
 @Controller()
 @UseFilters(WebExceptionFilter)
@@ -122,10 +126,18 @@ export class WebController {
   @Post('orgs')
   @UseGuards(AuthenticatedGuard)
   async createOrg(@Req() request: Request, @Res() response: Response, @Body() body: Record<string, string>): Promise<void> {
-    const name = requireText(body.name, 'Organization name', 120);
-    const organization = await this.orgsService.createForUser(request.session.userId as string, name);
+    const result = await this.attempt(request, async () => {
+      const name = requireText(body.name, 'Organization name', 120);
+      return this.orgsService.createForUser(request.session.userId as string, name);
+    });
 
-    response.redirect(`/orgs/${organization.id}`);
+    if (!result.ok) {
+      response.redirect('/orgs');
+      return;
+    }
+
+    setFlash(request, 'success', `Created ${result.value.name}`);
+    response.redirect(`/orgs/${result.value.id}`);
   }
 
   @Get('orgs/:orgId')
@@ -136,6 +148,8 @@ export class WebController {
       this.projectsService.listWithSpend(org.organizationId),
       this.orgsService.listMembers(org.organizationId),
     ]);
+
+    const adminCount = members.filter((membership) => membership.role === 'admin').length;
 
     response.render('org', {
       ...this.baseLocals(request),
@@ -155,37 +169,68 @@ export class WebController {
         email: membership.user.email,
         role: membership.role,
         isAdmin: membership.role === 'admin',
+        isLastAdmin: membership.role === 'admin' && adminCount <= 1,
       })),
     });
   }
 
   @Post('orgs/:orgId/members')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
-  async addMember(@Res() response: Response, @CurrentOrg() org: OrgContext, @Body() body: Record<string, string>): Promise<void> {
-    const email = requireEmail(body.email);
-    const role = requireOneOf(body.role, ['admin', 'member'] as const, 'Role');
+  async addMember(
+    @Req() request: Request,
+    @Res() response: Response,
+    @CurrentOrg() org: OrgContext,
+    @Body() body: Record<string, string>,
+  ): Promise<void> {
+    const result = await this.attempt(request, async () => {
+      const email = requireEmail(body.email);
+      const role = requireOneOf(body.role, ['admin', 'member'] as const, 'Role');
+      return this.orgsService.addMember(org.organizationId, email, role);
+    });
 
-    await this.orgsService.addMember(org.organizationId, email, role);
+    if (result.ok) {
+      setFlash(request, 'success', `${body.email} added as ${body.role}`);
+    }
 
     response.redirect(`/orgs/${org.organizationId}`);
   }
 
   @Post('orgs/:orgId/members/:userId/delete')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
-  async removeMember(@Res() response: Response, @CurrentOrg() org: OrgContext, @Param('userId') userId: string): Promise<void> {
-    await this.orgsService.removeMember(org.organizationId, userId);
+  async removeMember(
+    @Req() request: Request,
+    @Res() response: Response,
+    @CurrentOrg() org: OrgContext,
+    @Param('userId') userId: string,
+  ): Promise<void> {
+    const result = await this.attempt(request, () => this.orgsService.removeMember(org.organizationId, userId));
+
+    if (result.ok) {
+      setFlash(request, 'success', 'Member removed');
+    }
 
     response.redirect(`/orgs/${org.organizationId}`);
   }
 
   @Post('orgs/:orgId/projects')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
-  async createProject(@Res() response: Response, @CurrentOrg() org: OrgContext, @Body() body: Record<string, string>): Promise<void> {
-    await this.projectsService.create(org.organizationId, {
-      name: requireText(body.name, 'Project name', 160),
-      description: optionalText(body.description),
-      budgetEtb: requireMoney(body.budgetEtb, 'Budget'),
-    });
+  async createProject(
+    @Req() request: Request,
+    @Res() response: Response,
+    @CurrentOrg() org: OrgContext,
+    @Body() body: Record<string, string>,
+  ): Promise<void> {
+    const result = await this.attempt(request, async () =>
+      this.projectsService.create(org.organizationId, {
+        name: requireText(body.name, 'Project name', 160),
+        description: optionalText(body.description),
+        budgetEtb: requireMoney(body.budgetEtb, 'Budget'),
+      }),
+    );
+
+    if (result.ok) {
+      setFlash(request, 'success', `Project "${result.value.name}" created`);
+    }
 
     response.redirect(`/orgs/${org.organizationId}`);
   }
@@ -226,16 +271,23 @@ export class WebController {
   @Post('orgs/:orgId/projects/:projectId/tasks')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard)
   async createTask(
+    @Req() request: Request,
     @Res() response: Response,
     @CurrentOrg() org: OrgContext,
     @Param('projectId') projectId: string,
     @Body() body: Record<string, string>,
   ): Promise<void> {
-    await this.tasksService.create(org.organizationId, projectId, {
-      title: requireText(body.title, 'Task title', 200),
-      status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
-      estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
-    });
+    const result = await this.attempt(request, async () =>
+      this.tasksService.create(org.organizationId, projectId, {
+        title: requireText(body.title, 'Task title', 200),
+        status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
+        estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
+      }),
+    );
+
+    if (result.ok) {
+      setFlash(request, 'success', 'Task added');
+    }
 
     response.redirect(`/orgs/${org.organizationId}/projects/${projectId}`);
   }
@@ -243,17 +295,24 @@ export class WebController {
   @Post('orgs/:orgId/projects/:projectId/tasks/:taskId')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard)
   async updateTask(
+    @Req() request: Request,
     @Res() response: Response,
     @CurrentOrg() org: OrgContext,
     @Param('projectId') projectId: string,
     @Param('taskId') taskId: string,
     @Body() body: Record<string, string>,
   ): Promise<void> {
-    await this.tasksService.update(org.organizationId, taskId, {
-      title: requireText(body.title, 'Task title', 200),
-      status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
-      estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
-    });
+    const result = await this.attempt(request, async () =>
+      this.tasksService.update(org.organizationId, taskId, {
+        title: requireText(body.title, 'Task title', 200),
+        status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
+        estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
+      }),
+    );
+
+    if (result.ok) {
+      setFlash(request, 'success', 'Task saved');
+    }
 
     response.redirect(`/orgs/${org.organizationId}/projects/${projectId}`);
   }
@@ -261,22 +320,43 @@ export class WebController {
   @Post('orgs/:orgId/projects/:projectId/tasks/:taskId/delete')
   @UseGuards(AuthenticatedGuard, OrgMemberGuard)
   async deleteTask(
+    @Req() request: Request,
     @Res() response: Response,
     @CurrentOrg() org: OrgContext,
     @Param('projectId') projectId: string,
     @Param('taskId') taskId: string,
   ): Promise<void> {
-    await this.tasksService.remove(org.organizationId, taskId);
+    const result = await this.attempt(request, () => this.tasksService.remove(org.organizationId, taskId));
+
+    if (result.ok) {
+      setFlash(request, 'success', 'Task deleted');
+    }
 
     response.redirect(`/orgs/${org.organizationId}/projects/${projectId}`);
   }
 
+  private async attempt<T>(request: Request, action: () => Promise<T>): Promise<Attempt<T>> {
+    try {
+      return { ok: true, value: await action() };
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500) {
+        setFlash(request, 'error', httpExceptionMessage(error, error.getStatus()));
+        return { ok: false };
+      }
+
+      throw error;
+    }
+  }
+
   private baseLocals(request: Request): Record<string, unknown> {
+    const flash = popFlash(request);
+
     if (!request.session.userId) {
-      return {};
+      return { flash };
     }
 
     return {
+      flash,
       currentUser: { id: request.session.userId, name: request.session.userName },
     };
   }

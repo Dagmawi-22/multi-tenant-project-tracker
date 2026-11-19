@@ -1,5 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Response } from 'express';
+import { httpExceptionMessage } from '../common/http-message';
 
 @Catch()
 export class WebExceptionFilter implements ExceptionFilter {
@@ -22,29 +23,7 @@ export class WebExceptionFilter implements ExceptionFilter {
     response.status(status).render('error', {
       title: `Error ${status}`,
       status,
-      message: this.messageFor(exception, status),
+      message: httpExceptionMessage(exception, status),
     });
-  }
-
-  private messageFor(exception: unknown, status: number): string {
-    if (exception instanceof HttpException) {
-      const payload = exception.getResponse();
-
-      if (typeof payload === 'string') {
-        return payload;
-      }
-
-      const message = (payload as { message?: string | string[] }).message;
-
-      if (Array.isArray(message)) {
-        return message.join(', ');
-      }
-
-      if (typeof message === 'string') {
-        return message;
-      }
-    }
-
-    return status === HttpStatus.NOT_FOUND ? 'Not found.' : 'Something went wrong.';
   }
 }

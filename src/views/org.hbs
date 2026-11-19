@@ -70,9 +70,13 @@
         <td><span class="pill {{#unless this.isAdmin}}muted{{/unless}}">{{this.role}}</span></td>
         {{#if ../isAdmin}}
           <td class="num">
-            <form method="post" action="/orgs/{{../organization.id}}/members/{{this.userId}}/delete" style="margin:0">
-              <button class="danger" type="submit">Remove</button>
-            </form>
+            {{#unless this.isLastAdmin}}
+              <form method="post" action="/orgs/{{../organization.id}}/members/{{this.userId}}/delete" style="margin:0">
+                <button class="danger" type="submit">Remove</button>
+              </form>
+            {{else}}
+              <span class="muted" style="font-size:12px">Only admin</span>
+            {{/unless}}
           </td>
         {{/if}}
       </tr>
