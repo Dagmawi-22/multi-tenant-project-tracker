@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { config as loadEnv } from 'dotenv';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -6,6 +7,8 @@ import connectPgSimple from 'connect-pg-simple';
 import session from 'express-session';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
+
+loadEnv();
 
 export function buildSessionMiddleware() {
   const PgSession = connectPgSimple(session);
