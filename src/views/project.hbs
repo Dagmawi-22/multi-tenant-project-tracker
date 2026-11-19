@@ -1,0 +1,75 @@
+{{!< layout}}
+<p class="crumb"><a href="/orgs">Organizations</a> &rsaquo; <a href="/orgs/{{organization.id}}">{{organization.name}}</a> &rsaquo; {{project.name}}</p>
+<h1>{{project.name}}</h1>
+<p class="sub">{{#if project.description}}{{project.description}}{{else}}No description.{{/if}}</p>
+{{#if error}}<div class="alert">{{error}}</div>{{/if}}
+
+<div class="card">
+  <h2>Budget</h2>
+  <div class="row">
+    <div><div class="muted" style="font-size:13px">Budget</div><div style="font-size:20px">{{budgetFormatted}} ETB</div></div>
+    <div><div class="muted" style="font-size:13px">Spent</div><div style="font-size:20px">{{spentFormatted}} ETB</div></div>
+    <div><div class="muted" style="font-size:13px">Remaining</div><div style="font-size:20px;{{#if isOverBudget}}color:var(--danger){{/if}}">{{remainingFormatted}} ETB</div></div>
+  </div>
+  <div class="meter {{#if isOverBudget}}over{{/if}}" style="margin-top:14px"><span style="width:{{percentUsed}}%"></span></div>
+  <p class="muted" style="font-size:13px;margin-bottom:0">Spent is the sum of the estimated cost of every task in this project.</p>
+</div>
+
+<div class="card">
+  <h2>Tasks</h2>
+  {{#if tasks.length}}
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Status</th><th class="num">Estimated cost (ETB)</th><th></th></tr>
+      </thead>
+      <tbody>
+      {{#each tasks}}
+        <tr>
+          <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}" style="display:contents">
+            <td><input name="title" value="{{this.title}}" required></td>
+            <td>
+              <select name="status">
+                <option value="todo" {{#if this.isTodo}}selected{{/if}}>todo</option>
+                <option value="in_progress" {{#if this.isInProgress}}selected{{/if}}>in progress</option>
+                <option value="done" {{#if this.isDone}}selected{{/if}}>done</option>
+              </select>
+            </td>
+            <td class="num"><input class="num" name="estimatedCostEtb" type="number" min="0" step="0.01" value="{{this.estimatedCostEtb}}" required></td>
+            <td class="num"><button class="secondary" type="submit">Save</button></td>
+          </form>
+          <td class="num">
+            <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}/delete" style="margin:0">
+              <button class="danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {{/each}}
+      </tbody>
+    </table>
+  {{else}}
+    <p class="empty">No tasks yet.</p>
+  {{/if}}
+</div>
+
+<div class="card">
+  <h2>New task</h2>
+  <form method="post" action="/orgs/{{organization.id}}/projects/{{project.id}}/tasks" class="inline-form">
+    <div class="field">
+      <label for="t-title">Title</label>
+      <input id="t-title" name="title" required>
+    </div>
+    <div class="field" style="flex:0 1 160px">
+      <label for="t-status">Status</label>
+      <select id="t-status" name="status">
+        <option value="todo">todo</option>
+        <option value="in_progress">in progress</option>
+        <option value="done">done</option>
+      </select>
+    </div>
+    <div class="field" style="flex:0 1 180px">
+      <label for="t-cost">Estimated cost (ETB)</label>
+      <input id="t-cost" name="estimatedCostEtb" type="number" min="0" step="0.01" value="0" required>
+    </div>
+    <button type="submit">Add task</button>
+  </form>
+</div>
