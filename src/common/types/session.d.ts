@@ -1,0 +1,19 @@
+import 'express-session';
+
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+    userName?: string;
+  }
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      orgContext?: {
+        organizationId: string;
+        role: 'admin' | 'member';
+      };
+    }
+  }
+}
