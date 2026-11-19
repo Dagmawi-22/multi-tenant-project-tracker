@@ -1,0 +1,41 @@
+{{!< layout}}
+<div class="auth">
+  <h1>Join {{organizationName}}</h1>
+  <p class="sub">{{inviterName}} invited <strong>{{email}}</strong> to join as {{role}}.</p>
+
+  <div class="card">
+    {{#if needsAccount}}
+      <p class="muted" style="font-size:14px;margin-top:0">
+        You do not have an account yet. Choose a name and password to create one and join.
+      </p>
+      <form method="post" action="/invitations/accept" class="stack">
+        <input type="hidden" name="token" value="{{token}}">
+        <div class="field">
+          <label for="a-email">Email</label>
+          <input id="a-email" value="{{email}}" disabled>
+        </div>
+        <div class="field">
+          <label for="a-name">Your name</label>
+          <input id="a-name" name="name" required autofocus>
+        </div>
+        <div class="field">
+          <label for="a-password">Choose a password</label>
+          <input id="a-password" name="password" type="password" minlength="8" required>
+        </div>
+        <button type="submit">Create account and join</button>
+      </form>
+    {{else}}
+      {{#if signedInAsInvitee}}
+        <form method="post" action="/invitations/accept" class="stack">
+          <input type="hidden" name="token" value="{{token}}">
+          <button type="submit">Accept invitation</button>
+        </form>
+      {{else}}
+        <p class="muted" style="font-size:14px;margin-top:0">
+          An account already exists for {{email}}. Sign in with that account to accept this invitation.
+        </p>
+        <a class="btn" href="/login">Sign in</a>
+      {{/if}}
+    {{/if}}
+  </div>
+</div>

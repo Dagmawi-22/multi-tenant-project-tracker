@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { config as loadEnv } from 'dotenv';
 import { DataSource, DataSourceOptions } from 'typeorm';
-import { Membership, Organization, Project, Task, User } from '../entities';
+import { Invitation, Membership, Organization, Project, Task, User } from '../entities';
 
 loadEnv();
 
@@ -15,7 +15,7 @@ export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url,
   ssl: url.includes('localhost') || url.includes('127.0.0.1') ? false : { rejectUnauthorized: false },
-  entities: [User, Organization, Membership, Project, Task],
+  entities: [User, Organization, Membership, Project, Task, Invitation],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   migrationsTableName: 'schema_migrations',
   synchronize: false,

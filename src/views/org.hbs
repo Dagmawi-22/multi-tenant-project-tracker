@@ -85,10 +85,10 @@
   </table>
 
   {{#if isAdmin}}
-    <form method="post" action="/orgs/{{organization.id}}/members" class="inline-form" style="margin-top:16px">
+    <form method="post" action="/orgs/{{organization.id}}/invitations" class="inline-form" style="margin-top:16px">
       <div class="field">
-        <label for="m-email">Add a registered user by email</label>
-        <input id="m-email" name="email" type="email" required>
+        <label for="m-email">Invite someone by email</label>
+        <input id="m-email" name="email" type="email" placeholder="name@example.com" required>
       </div>
       <div class="field" style="flex:0 1 140px">
         <label for="m-role">Role</label>
@@ -97,7 +97,36 @@
           <option value="admin">admin</option>
         </select>
       </div>
-      <button type="submit">Add member</button>
+      <button type="submit">Send invitation</button>
     </form>
+    <p class="muted" style="font-size:12px;margin-bottom:0">
+      Registered users are added right away. Anyone else receives an email invitation and creates their
+      account when they accept.
+    </p>
   {{/if}}
 </div>
+
+{{#if isAdmin}}
+  {{#if pendingInvitations.length}}
+  <div class="card">
+    <h2>Pending invitations</h2>
+    <table>
+      <thead><tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr></thead>
+      <tbody>
+      {{#each pendingInvitations}}
+        <tr>
+          <td>{{this.email}}</td>
+          <td><span class="pill muted">{{this.role}}</span></td>
+          <td class="muted">{{this.expiresAt}}</td>
+          <td class="num">
+            <form method="post" action="/orgs/{{../organization.id}}/invitations/{{this.id}}/delete" style="margin:0">
+              <button class="danger" type="submit">Revoke</button>
+            </form>
+          </td>
+        </tr>
+      {{/each}}
+      </tbody>
+    </table>
+  </div>
+  {{/if}}
+{{/if}}
