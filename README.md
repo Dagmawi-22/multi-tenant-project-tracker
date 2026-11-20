@@ -36,7 +36,7 @@ cp .env.example .env     # DATABASE_URL and SESSION_SECRET are the only required
 npm run migration:run
 npm run seed
 npm run start:dev        # http://localhost:3000
-npm test                 # 21 specs; needs TEST_DATABASE_URL
+npm test                 # 27 specs; needs TEST_DATABASE_URL
 ```
 
 Tests truncate every table, so they refuse to run unless `TEST_DATABASE_URL` is set and can
@@ -101,6 +101,12 @@ Every tenant-scoped route carries the organization id in its URL, and `OrgMember
 it against a `memberships` lookup for the session's user before the handler runs — so the tenant
 id queries filter by is one the server proved you belong to, never one the client asserted.
 
+The guard is registered **globally** as an `APP_GUARD`, not per controller, and keys off the
+presence of an `:orgId` route parameter: no parameter, no tenant check; parameter present, the
+membership must exist. Isolation is therefore the default rather than something each new
+controller opts into — no controller in this codebase declares `OrgMemberGuard`, and the
+isolation tests still pass, which is what proves the global registration is doing the work.
+
 - User id comes from a signed session cookie; no endpoint takes a tenant id from a body.
 - Non-members get **404, not 403**, so the API never confirms an organization exists.
 - Every query carries `organization_id`; updates and deletes are `WHERE id = $1 AND
@@ -109,10 +115,13 @@ id queries filter by is one the server proved you belong to, never one the clien
   key on `(project_id, organization_id)` — Postgres rejects a task attached to another org's
   project outright.
 
-**Where it could leak:** isolation is opt-in, so a new controller that forgets the guard has
-none; any future query filtering by primary key alone, or a join omitting `organization_id`,
-leaks immediately; a cross-org reporting endpoint would bypass the guard entirely; and the tests
-cover today's routes, not tomorrow's.
+**Where it could leak:** the guard keys off the URL, so a future route that takes a tenant id
+from a body or query string instead of an `:orgId` path parameter gets no check at all — the
+convention has to hold. Below the guard, any query filtering by primary key alone, or a join
+omitting `organization_id`, still leaks regardless of how the request was authorized. A
+cross-org reporting endpoint would need its own scoping. And the tests cover today's routes,
+not tomorrow's — row-level security, listed below, is what would make a forgotten `WHERE`
+return nothing instead of someone else's rows.
 
 ## Two decisions
 
