@@ -36,7 +36,7 @@ cp .env.example .env     # DATABASE_URL and SESSION_SECRET are the only required
 npm run migration:run
 npm run seed
 npm run start:dev        # http://localhost:3000
-npm test                 # 27 specs; needs TEST_DATABASE_URL
+npm test                 # 31 specs; needs TEST_DATABASE_URL
 ```
 
 Tests truncate every table, so they refuse to run unless `TEST_DATABASE_URL` is set and can
@@ -107,6 +107,14 @@ membership must exist. Isolation is therefore the default rather than something 
 controller opts into — no controller in this codebase declares `OrgMemberGuard`, and the
 isolation tests still pass, which is what proves the global registration is doing the work.
 
+That leaves one assumption: the guard only fires for routes that spell the tenant `:orgId`.
+A route naming it `:tenantId`, or taking it from a body, would get no check. So the convention
+is enforced rather than trusted — `test/route-tenancy.spec.ts` reflects over every registered
+route and fails the build unless each one either carries `:orgId` or appears in an explicit
+list of deliberately global routes (login, register, `/healthz`, the organization list). It
+also rejects tenant-ish parameter names the guard would not recognise, and fails if the global
+list goes stale. Adding an unscoped route is therefore a red pipeline, not a silent leak.
+
 - User id comes from a signed session cookie; no endpoint takes a tenant id from a body.
 - Non-members get **404, not 403**, so the API never confirms an organization exists.
 - Every query carries `organization_id`; updates and deletes are `WHERE id = $1 AND
@@ -115,13 +123,16 @@ isolation tests still pass, which is what proves the global registration is doin
   key on `(project_id, organization_id)` — Postgres rejects a task attached to another org's
   project outright.
 
-**Where it could leak:** the guard keys off the URL, so a future route that takes a tenant id
-from a body or query string instead of an `:orgId` path parameter gets no check at all — the
-convention has to hold. Below the guard, any query filtering by primary key alone, or a join
-omitting `organization_id`, still leaks regardless of how the request was authorized. A
-cross-org reporting endpoint would need its own scoping. And the tests cover today's routes,
-not tomorrow's — row-level security, listed below, is what would make a forgotten `WHERE`
-return nothing instead of someone else's rows.
+**Where it could leak:** the route test catches an unscoped *route*, but nothing below the
+guard. A query filtering by primary key alone, or a join omitting `organization_id`, still
+leaks even though the request was correctly authorized — the guard proves which tenant you
+are, it does not scope your SQL. A deliberate cross-org endpoint added to the global list
+would be trusted on the author's word. And a non-HTTP entry point — a cron job, a queue
+consumer, a future GraphQL resolver — has no route and so no guard at all.
+
+Row-level security, listed below, is the answer to that whole class: it moves the check from
+the request layer to the database, so a forgotten `WHERE` returns nothing instead of someone
+else's rows.
 
 ## Two decisions
 
