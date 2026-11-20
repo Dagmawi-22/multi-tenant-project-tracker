@@ -7,31 +7,33 @@
 <div class="card">
   <h2>Projects</h2>
   {{#if projects.length}}
-    <table>
-      <thead>
-        <tr>
-          <th>Project</th>
-          <th class="num">Budget (ETB)</th>
-          <th class="num">Spent (ETB)</th>
-          <th class="num">Remaining</th>
-          <th class="num">Tasks</th>
-        </tr>
-      </thead>
-      <tbody>
-      {{#each projects}}
-        <tr>
-          <td>
-            <a href="/orgs/{{../organization.id}}/projects/{{this.id}}">{{this.name}}</a>
-            <div class="meter {{#if this.isOverBudget}}over{{/if}}"><span style="width:{{this.percentUsed}}%"></span></div>
-          </td>
-          <td class="num">{{this.budgetFormatted}}</td>
-          <td class="num">{{this.spentFormatted}}</td>
-          <td class="num">{{#if this.isOverBudget}}<span style="color:var(--danger)">{{this.remainingFormatted}}</span>{{else}}{{this.remainingFormatted}}{{/if}}</td>
-          <td class="num">{{this.taskCount}}</td>
-        </tr>
-      {{/each}}
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th class="num">Budget (ETB)</th>
+            <th class="num">Spent (ETB)</th>
+            <th class="num">Remaining</th>
+            <th class="num">Tasks</th>
+          </tr>
+        </thead>
+        <tbody>
+        {{#each projects}}
+          <tr>
+            <td>
+              <a href="/orgs/{{../organization.id}}/projects/{{this.id}}">{{this.name}}</a>
+              <div class="meter {{#if this.isOverBudget}}over{{/if}}"><span style="width:{{this.percentUsed}}%"></span></div>
+            </td>
+            <td class="num">{{this.budgetFormatted}}</td>
+            <td class="num">{{this.spentFormatted}}</td>
+            <td class="num {{#if this.isOverBudget}}over{{/if}}">{{this.remainingFormatted}}</td>
+            <td class="num">{{this.taskCount}}</td>
+          </tr>
+        {{/each}}
+        </tbody>
+      </table>
+    </div>
   {{else}}
     <p class="empty">No projects yet.</p>
   {{/if}}
@@ -47,9 +49,9 @@
     </div>
     <div class="field">
       <label for="p-desc">Description</label>
-      <input id="p-desc" name="description">
+      <input id="p-desc" name="description" placeholder="Optional">
     </div>
-    <div class="field" style="flex:0 1 180px">
+    <div class="field field-md">
       <label for="p-budget">Budget (ETB)</label>
       <input id="p-budget" name="budgetEtb" type="number" min="0" step="0.01" value="0" required>
     </div>
@@ -60,37 +62,41 @@
 
 <div class="card">
   <h2>Members</h2>
-  <table>
-    <thead><tr><th>Name</th><th>Email</th><th>Role</th>{{#if isAdmin}}<th></th>{{/if}}</tr></thead>
-    <tbody>
-    {{#each members}}
-      <tr>
-        <td>{{this.name}}</td>
-        <td class="muted">{{this.email}}</td>
-        <td><span class="pill {{#unless this.isAdmin}}muted{{/unless}}">{{this.role}}</span></td>
-        {{#if ../isAdmin}}
-          <td class="num">
-            {{#unless this.isLastAdmin}}
-              <form method="post" action="/orgs/{{../organization.id}}/members/{{this.userId}}/delete" style="margin:0">
-                <button class="danger" type="submit">Remove</button>
-              </form>
-            {{else}}
-              <span class="muted" style="font-size:12px">Only admin</span>
-            {{/unless}}
-          </td>
-        {{/if}}
-      </tr>
-    {{/each}}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th>{{#if isAdmin}}<th></th>{{/if}}</tr></thead>
+      <tbody>
+      {{#each members}}
+        <tr>
+          <td>{{this.name}}</td>
+          <td class="muted">{{this.email}}</td>
+          <td><span class="pill {{#unless this.isAdmin}}muted{{/unless}}">{{this.role}}</span></td>
+          {{#if ../isAdmin}}
+            <td>
+              <div class="actions">
+                {{#unless this.isLastAdmin}}
+                  <form method="post" action="/orgs/{{../organization.id}}/members/{{this.userId}}/delete">
+                    <button class="danger" type="submit">Remove</button>
+                  </form>
+                {{else}}
+                  <span class="muted" style="font-size:12px">Only admin</span>
+                {{/unless}}
+              </div>
+            </td>
+          {{/if}}
+        </tr>
+      {{/each}}
+      </tbody>
+    </table>
+  </div>
 
   {{#if isAdmin}}
-    <form method="post" action="/orgs/{{organization.id}}/invitations" class="inline-form" style="margin-top:16px">
+    <form method="post" action="/orgs/{{organization.id}}/invitations" class="inline-form" style="margin-top:18px">
       <div class="field">
         <label for="m-email">Invite someone by email</label>
         <input id="m-email" name="email" type="email" placeholder="name@example.com" required>
       </div>
-      <div class="field" style="flex:0 1 140px">
+      <div class="field field-sm">
         <label for="m-role">Role</label>
         <select id="m-role" name="role">
           <option value="member">member</option>
@@ -99,7 +105,7 @@
       </div>
       <button type="submit">Send invitation</button>
     </form>
-    <p class="muted" style="font-size:12px;margin-bottom:0">
+    <p class="note">
       Registered users are added right away. Anyone else receives an email invitation and creates their
       account when they accept.
     </p>
@@ -110,23 +116,27 @@
   {{#if pendingInvitations.length}}
   <div class="card">
     <h2>Pending invitations</h2>
-    <table>
-      <thead><tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr></thead>
-      <tbody>
-      {{#each pendingInvitations}}
-        <tr>
-          <td>{{this.email}}</td>
-          <td><span class="pill muted">{{this.role}}</span></td>
-          <td class="muted">{{this.expiresAt}}</td>
-          <td class="num">
-            <form method="post" action="/orgs/{{../organization.id}}/invitations/{{this.id}}/delete" style="margin:0">
-              <button class="danger" type="submit">Revoke</button>
-            </form>
-          </td>
-        </tr>
-      {{/each}}
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr></thead>
+        <tbody>
+        {{#each pendingInvitations}}
+          <tr>
+            <td>{{this.email}}</td>
+            <td><span class="pill muted">{{this.role}}</span></td>
+            <td class="muted">{{this.expiresAt}}</td>
+            <td>
+              <div class="actions">
+                <form method="post" action="/orgs/{{../organization.id}}/invitations/{{this.id}}/delete">
+                  <button class="danger" type="submit">Revoke</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {{/each}}
+        </tbody>
+      </table>
+    </div>
   </div>
   {{/if}}
 {{/if}}
