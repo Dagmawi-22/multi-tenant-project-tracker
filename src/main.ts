@@ -39,6 +39,7 @@ export function buildSessionMiddleware() {
 export function configureApp(app: NestExpressApplication): void {
   app.set('trust proxy', 1);
   app.use(buildSessionMiddleware());
+  app.useStaticAssets(join(__dirname, 'public'));
   app.setBaseViewsDir(join(__dirname, 'views'));
   app.setViewEngine('hbs');
   app.useGlobalPipes(
