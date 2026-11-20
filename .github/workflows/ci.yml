@@ -65,15 +65,33 @@ jobs:
         run: curl --fail --silent --show-error --request POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
 
       - name: Wait for the live site to report this commit
+        env:
+          LIVE_URL: ${{ vars.LIVE_URL }}
         run: |
+          if [ -z "$LIVE_URL" ]; then
+            echo "The LIVE_URL repository variable is empty."
+            echo "Set it under Settings > Secrets and variables > Actions > Variables"
+            echo "to the full origin, for example https://example.onrender.com"
+            exit 1
+          fi
+
+          base="${LIVE_URL%/}"
+          echo "Polling $base/healthz for $GITHUB_SHA"
+
           for attempt in $(seq 1 60); do
-            reported=$(curl --silent --max-time 10 "${{ vars.LIVE_URL }}/healthz" | jq -r '.commit // empty')
+            response=$(curl --silent --location --max-time 10 --write-out '\n%{http_code}' "$base/healthz" || true)
+            status=$(printf '%s' "$response" | tail -n 1)
+            payload=$(printf '%s' "$response" | sed '$d')
+            reported=$(printf '%s' "$payload" | jq -r '.commit // empty' 2>/dev/null || true)
+
             if [ "$reported" = "$GITHUB_SHA" ]; then
               echo "Live site is running $GITHUB_SHA"
               exit 0
             fi
-            echo "attempt $attempt: live site reports '${reported:-unreachable}'"
+
+            echo "attempt $attempt: http=${status:-none} commit=${reported:-none} body=$(printf '%s' "$payload" | tr -d '\n' | head -c 200)"
             sleep 15
           done
+
           echo "Timed out waiting for the deploy to go live"
           exit 1
