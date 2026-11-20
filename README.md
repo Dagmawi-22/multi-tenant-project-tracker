@@ -33,6 +33,11 @@ Tests truncate every table, so they refuse to run unless `TEST_DATABASE_URL` is 
 never hit the live database by accident. Without SMTP configured, invitations are still created
 and the link is shown in the UI instead of emailed.
 
+The seed builds its organization, admin and member from the `SEED_*` variables, falling back to
+the sample names in `.env.example`. Passwords have no production fallback: with
+`NODE_ENV=production` the seed stops unless `SEED_ADMIN_PASSWORD` and `SEED_MEMBER_PASSWORD`
+(or a shared `SEED_PASSWORD`) are set, so a deployment can never end up with a known password.
+
 ## Pipeline
 
 `.github/workflows/ci.yml`. On every push: start a Postgres service container, `npm ci`, build,

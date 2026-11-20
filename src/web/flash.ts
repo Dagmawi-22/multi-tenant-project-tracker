@@ -1,4 +1,4 @@
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 export type FlashType = 'success' | 'error';
 
@@ -19,4 +19,8 @@ export function popFlash(request: Request): Flash | undefined {
   }
 
   return flash;
+}
+
+export function redirectWith(request: Request, response: Response, url: string): void {
+  request.session.save(() => response.redirect(url));
 }

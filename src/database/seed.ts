@@ -1,36 +1,121 @@
 import 'reflect-metadata';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { hashPassword } from '../auth/password';
-import { Membership, Organization, Project, Task, User } from '../entities';
+import { Membership, MembershipRole, Organization, Project, Task, User } from '../entities';
 import dataSource from './data-source';
 
-const SEED_PASSWORD = process.env.SEED_PASSWORD ?? 'Password123!';
-
-const ADMIN = { name: 'Hanna Bekele', email: 'hanna@addisbuild.et' };
-const MEMBER = { name: 'Yonas Girma', email: 'yonas@addisbuild.et' };
-const ORGANIZATION_NAME = 'Addis Build Collective';
+const DEV_PASSWORD = 'Password123!';
 const PROJECT_NAME = 'Bole Office Fit-out';
 
-async function seed(source: DataSource): Promise<void> {
-  await source.transaction(async (manager) => {
-    const existing = await manager.findOne(Organization, { where: { name: ORGANIZATION_NAME } });
+type SeedAccount = { name: string; email: string; password: string };
+type SeedConfig = { admin: SeedAccount; member: SeedAccount; organizationName: string };
 
-    if (existing) {
-      console.log(`Seed skipped: "${ORGANIZATION_NAME}" already exists (${existing.id})`);
+function text(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+
+  return value ? value : fallback;
+}
+
+function secret(name: string): string {
+  const value = (process.env[name] ?? process.env.SEED_PASSWORD)?.trim();
+
+  if (value) {
+    return value;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`Set ${name} (or SEED_PASSWORD) before seeding outside development`);
+  }
+
+  console.warn(`${name} is not set; using the development password "${DEV_PASSWORD}"`);
+
+  return DEV_PASSWORD;
+}
+
+function resolveConfig(): SeedConfig {
+  return {
+    admin: {
+      name: text('SEED_ADMIN_NAME', 'Hanna Bekele'),
+      email: text('SEED_ADMIN_EMAIL', 'hanna@addisbuild.et'),
+      password: secret('SEED_ADMIN_PASSWORD'),
+    },
+    member: {
+      name: text('SEED_MEMBER_NAME', 'Yonas Girma'),
+      email: text('SEED_MEMBER_EMAIL', 'yonas@addisbuild.et'),
+      password: secret('SEED_MEMBER_PASSWORD'),
+    },
+    organizationName: text('SEED_ORG_NAME', 'Addis Build Collective'),
+  };
+}
+
+async function createUser(manager: EntityManager, account: SeedAccount): Promise<User> {
+  return manager.save(
+    manager.create(User, {
+      name: account.name,
+      email: account.email,
+      passwordHash: await hashPassword(account.password),
+    }),
+  );
+}
+
+async function ensureUser(
+  manager: EntityManager,
+  account: SeedAccount,
+): Promise<{ user: User; created: boolean }> {
+  const existing = await manager.findOne(User, { where: { email: account.email } });
+
+  if (existing) {
+    return { user: existing, created: false };
+  }
+
+  return { user: await createUser(manager, account), created: true };
+}
+
+async function ensureMembership(
+  manager: EntityManager,
+  userId: string,
+  organizationId: string,
+  role: MembershipRole,
+): Promise<void> {
+  const existing = await manager.findOne(Membership, { where: { userId, organizationId } });
+
+  if (!existing) {
+    await manager.save(manager.create(Membership, { userId, organizationId, role }));
+    return;
+  }
+
+  if (existing.role !== role) {
+    existing.role = role;
+    await manager.save(existing);
+  }
+}
+
+function describe(account: SeedAccount, created: boolean): string {
+  return created ? `${account.email} (created)` : `${account.email} (already existed, password unchanged)`;
+}
+
+async function seed(source: DataSource, config: SeedConfig): Promise<void> {
+  await source.transaction(async (manager) => {
+    const found = await manager.findOne(Organization, { where: { name: config.organizationName } });
+    const organization =
+      found ?? (await manager.save(manager.create(Organization, { name: config.organizationName })));
+
+    const admin = await ensureUser(manager, config.admin);
+    const member = await ensureUser(manager, config.member);
+
+    await ensureMembership(manager, admin.user.id, organization.id, 'admin');
+    await ensureMembership(manager, member.user.id, organization.id, 'member');
+
+    console.log(`Organization "${organization.name}" (${organization.id}) ${found ? 'reused' : 'created'}`);
+    console.log(`  admin:  ${describe(config.admin, admin.created)}`);
+    console.log(`  member: ${describe(config.member, member.created)}`);
+
+    const projects = await manager.count(Project, { where: { organizationId: organization.id } });
+
+    if (projects > 0) {
+      console.log(`  sample project skipped: the organization already has ${projects} project(s)`);
       return;
     }
-
-    const passwordHash = await hashPassword(SEED_PASSWORD);
-
-    const admin = await manager.save(manager.create(User, { ...ADMIN, passwordHash }));
-    const member = await manager.save(manager.create(User, { ...MEMBER, passwordHash }));
-
-    const organization = await manager.save(manager.create(Organization, { name: ORGANIZATION_NAME }));
-
-    await manager.save([
-      manager.create(Membership, { userId: admin.id, organizationId: organization.id, role: 'admin' }),
-      manager.create(Membership, { userId: member.id, organizationId: organization.id, role: 'member' }),
-    ]);
 
     const project = await manager.save(
       manager.create(Project, {
@@ -72,18 +157,16 @@ async function seed(source: DataSource): Promise<void> {
       }),
     ]);
 
-    console.log(`Seeded organization "${organization.name}" (${organization.id})`);
-    console.log(`  admin:  ${ADMIN.email}`);
-    console.log(`  member: ${MEMBER.email}`);
     console.log(`  project: ${project.name} with 4 tasks`);
   });
 }
 
 async function main(): Promise<void> {
+  const config = resolveConfig();
   const source = await dataSource.initialize();
 
   try {
-    await seed(source);
+    await seed(source, config);
   } finally {
     await source.destroy();
   }

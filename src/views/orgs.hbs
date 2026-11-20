@@ -7,25 +7,27 @@
   <div class="card">
     <h2>Your organizations</h2>
     {{#if organizations.length}}
-      <table>
-        <thead><tr><th>Name</th><th>Your role</th></tr></thead>
-        <tbody>
-        {{#each organizations}}
-          <tr>
-            <td><a href="/orgs/{{this.id}}">{{this.name}}</a></td>
-            <td><span class="pill {{#unless this.isAdmin}}muted{{/unless}}">{{this.role}}</span></td>
-          </tr>
-        {{/each}}
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Your role</th></tr></thead>
+          <tbody>
+          {{#each organizations}}
+            <tr>
+              <td><a href="/orgs/{{this.id}}">{{this.name}}</a></td>
+              <td><span class="pill {{#unless this.isAdmin}}muted{{/unless}}">{{this.role}}</span></td>
+            </tr>
+          {{/each}}
+          </tbody>
+        </table>
+      </div>
     {{else}}
-      <p class="empty">You are not a member of any organization yet. Create one below.</p>
+      <p class="empty">No organizations yet. Create your first one alongside.</p>
     {{/if}}
   </div>
 
   <div class="card">
     <h2>Create an organization</h2>
-    <p class="muted" style="font-size:13px;margin-top:0">You become its first admin.</p>
+    <p class="hint">You become its first admin.</p>
     <form method="post" action="/orgs" class="stack">
       <div class="field">
         <label for="org-name">Organization name</label>

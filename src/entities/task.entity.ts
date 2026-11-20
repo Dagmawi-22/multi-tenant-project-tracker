@@ -6,6 +6,7 @@ export type TaskStatus = 'todo' | 'in_progress' | 'done';
 @Entity('tasks')
 @Index(['projectId'])
 @Index(['organizationId'])
+@Index(['assigneeUserId'])
 export class Task {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -24,6 +25,9 @@ export class Task {
 
   @Column({ type: 'numeric', precision: 14, scale: 2, name: 'estimated_cost_etb', default: 0 })
   estimatedCostEtb!: string;
+
+  @Column({ type: 'uuid', name: 'assignee_user_id', nullable: true })
+  assigneeUserId!: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;

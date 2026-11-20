@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsNumberString, IsOptional, IsString, Length } from 'class-validator';
+import { IsIn, IsNumberString, IsOptional, IsString, IsUUID, Length } from 'class-validator';
 import { TaskStatus } from '../../entities';
 
 export class SaveTaskDto {
@@ -14,4 +14,9 @@ export class SaveTaskDto {
   @Transform(({ value }) => (value === '' || value === undefined || value === null ? '0' : String(value)))
   @IsNumberString({ no_symbols: false })
   estimatedCostEtb!: string;
+
+  @Transform(({ value }) => (value === '' || value === null ? null : value))
+  @IsOptional()
+  @IsUUID()
+  assigneeUserId?: string | null;
 }

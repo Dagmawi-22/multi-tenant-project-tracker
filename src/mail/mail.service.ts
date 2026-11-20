@@ -21,7 +21,8 @@ export class MailService implements OnModuleInit {
       return;
     }
 
-    const port = Number(this.config.get<string>('SMTP_PORT') ?? 587);
+    const configuredPort = Number(this.config.get<string>('SMTP_PORT')?.trim());
+    const port = Number.isInteger(configuredPort) && configuredPort > 0 ? configuredPort : 587;
 
     this.transporter = createTransport({
       host,

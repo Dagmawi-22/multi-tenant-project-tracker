@@ -13,13 +13,42 @@ import { TaskStatus } from '../entities';
 import { OrgsService } from '../orgs/orgs.service';
 import { ProjectsService } from '../projects/projects.service';
 import { TasksService } from '../tasks/tasks.service';
-import { popFlash, setFlash } from './flash';
-import { optionalText, requireEmail, requireMoney, requireOneOf, requireText } from './form';
+import { popFlash, redirectWith, setFlash } from './flash';
+import { initialsOf } from './initials';
+import { optionalText, optionalUuid, requireEmail, requireMoney, requireOneOf, requireText } from './form';
 import { WebExceptionFilter } from './web-exception.filter';
 
 const TASK_STATUSES = ['todo', 'in_progress', 'done'] as const;
 
 type Attempt<T> = { ok: true; value: T } | { ok: false };
+
+const FORMER_MEMBER = 'Former member';
+
+function assigneeNameOf(assigneeUserId: string | null, names: Map<string, string>): string {
+  if (!assigneeUserId) {
+    return '';
+  }
+
+  return names.get(assigneeUserId) ?? FORMER_MEMBER;
+}
+
+function optionsFor(
+  assigneeUserId: string | null,
+  members: { userId: string; name: string }[],
+  names: Map<string, string>,
+): { userId: string; name: string; selected: boolean }[] {
+  const options = members.map((member) => ({
+    userId: member.userId,
+    name: member.name,
+    selected: member.userId === assigneeUserId,
+  }));
+
+  if (assigneeUserId && !names.has(assigneeUserId)) {
+    options.unshift({ userId: assigneeUserId, name: FORMER_MEMBER, selected: true });
+  }
+
+  return options;
+}
 
 @Controller()
 @UseFilters(WebExceptionFilter)
@@ -134,12 +163,12 @@ export class WebController {
     });
 
     if (!result.ok) {
-      response.redirect('/orgs');
+      redirectWith(request, response, '/orgs');
       return;
     }
 
     setFlash(request, 'success', `Created ${result.value.name}`);
-    response.redirect(`/orgs/${result.value.id}`);
+    redirectWith(request, response, `/orgs/${result.value.id}`);
   }
 
   @Get('orgs/:orgId')
@@ -218,7 +247,7 @@ export class WebController {
       }
     }
 
-    response.redirect(`/orgs/${org.organizationId}`);
+    redirectWith(request, response, `/orgs/${org.organizationId}`);
   }
 
   @Post('orgs/:orgId/invitations/:invitationId/delete')
@@ -237,7 +266,7 @@ export class WebController {
       setFlash(request, 'success', 'Invitation revoked');
     }
 
-    response.redirect(`/orgs/${org.organizationId}`);
+    redirectWith(request, response, `/orgs/${org.organizationId}`);
   }
 
   @Get('invitations/accept')
@@ -274,7 +303,7 @@ export class WebController {
 
     if (existingUser && request.session.userId !== existingUser.id) {
       setFlash(request, 'error', `Sign in as ${invitation.email} to accept this invitation`);
-      response.redirect('/login');
+      redirectWith(request, response, '/login');
       return;
     }
 
@@ -283,7 +312,7 @@ export class WebController {
     );
 
     if (!result.ok) {
-      response.redirect(`/invitations/accept?token=${encodeURIComponent(token)}`);
+      redirectWith(request, response, `/invitations/accept?token=${encodeURIComponent(token)}`);
       return;
     }
 
@@ -292,7 +321,7 @@ export class WebController {
     }
 
     setFlash(request, 'success', `You have joined ${invitation.organization.name}`);
-    response.redirect(`/orgs/${invitation.organizationId}`);
+    redirectWith(request, response, `/orgs/${invitation.organizationId}`);
   }
 
   @Post('orgs/:orgId/members/:userId/delete')
@@ -309,7 +338,7 @@ export class WebController {
       setFlash(request, 'success', 'Member removed');
     }
 
-    response.redirect(`/orgs/${org.organizationId}`);
+    redirectWith(request, response, `/orgs/${org.organizationId}`);
   }
 
   @Post('orgs/:orgId/projects')
@@ -332,7 +361,7 @@ export class WebController {
       setFlash(request, 'success', `Project "${result.value.name}" created`);
     }
 
-    response.redirect(`/orgs/${org.organizationId}`);
+    redirectWith(request, response, `/orgs/${org.organizationId}`);
   }
 
   @Get('orgs/:orgId/projects/:projectId')
@@ -347,6 +376,14 @@ export class WebController {
     const project = await this.projectsService.findOne(org.organizationId, projectId);
     const spentEtb = await this.projectsService.spendFor(org.organizationId, projectId);
     const tasks = await this.tasksService.listForProject(org.organizationId, projectId);
+    const members = await this.orgsService.listMembers(org.organizationId);
+
+    const assignable = members.map((membership) => ({
+      userId: membership.userId,
+      name: membership.user.name,
+    }));
+
+    const nameByUserId = new Map(assignable.map((member) => [member.userId, member.name]));
 
     response.render('project', {
       ...this.baseLocals(request),
@@ -356,6 +393,7 @@ export class WebController {
       isAdmin: org.role === 'admin',
       project,
       ...budgetSummary(project.budgetEtb, spentEtb),
+      members: assignable,
       tasks: tasks.map((task) => ({
         id: task.id,
         title: task.title,
@@ -364,8 +402,34 @@ export class WebController {
         isTodo: task.status === 'todo',
         isInProgress: task.status === 'in_progress',
         isDone: task.status === 'done',
+        assigneeName: assigneeNameOf(task.assigneeUserId, nameByUserId),
+        assigneeInitials: task.assigneeUserId
+          ? initialsOf(assigneeNameOf(task.assigneeUserId, nameByUserId))
+          : '',
+        isUnassigned: !task.assigneeUserId,
+        assignees: optionsFor(task.assigneeUserId, assignable, nameByUserId),
       })),
     });
+  }
+
+  @Post('orgs/:orgId/projects/:projectId/budget')
+  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  async updateProjectBudget(
+    @Req() request: Request,
+    @Res() response: Response,
+    @CurrentOrg() org: OrgContext,
+    @Param('projectId') projectId: string,
+    @Body() body: Record<string, string>,
+  ): Promise<void> {
+    const result = await this.attempt(request, () =>
+      this.projectsService.updateBudget(org.organizationId, projectId, requireMoney(body.budgetEtb, 'Budget')),
+    );
+
+    if (result.ok) {
+      setFlash(request, 'success', 'Budget updated');
+    }
+
+    redirectWith(request, response, `/orgs/${org.organizationId}/projects/${projectId}`);
   }
 
   @Post('orgs/:orgId/projects/:projectId/tasks')
@@ -382,6 +446,7 @@ export class WebController {
         title: requireText(body.title, 'Task title', 200),
         status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
         estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
+        assigneeUserId: optionalUuid(body.assigneeUserId, 'Assignee'),
       }),
     );
 
@@ -389,7 +454,7 @@ export class WebController {
       setFlash(request, 'success', 'Task added');
     }
 
-    response.redirect(`/orgs/${org.organizationId}/projects/${projectId}`);
+    redirectWith(request, response, `/orgs/${org.organizationId}/projects/${projectId}`);
   }
 
   @Post('orgs/:orgId/projects/:projectId/tasks/:taskId')
@@ -407,6 +472,7 @@ export class WebController {
         title: requireText(body.title, 'Task title', 200),
         status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
         estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
+        assigneeUserId: optionalUuid(body.assigneeUserId, 'Assignee'),
       }),
     );
 
@@ -414,7 +480,7 @@ export class WebController {
       setFlash(request, 'success', 'Task saved');
     }
 
-    response.redirect(`/orgs/${org.organizationId}/projects/${projectId}`);
+    redirectWith(request, response, `/orgs/${org.organizationId}/projects/${projectId}`);
   }
 
   @Post('orgs/:orgId/projects/:projectId/tasks/:taskId/delete')
@@ -432,7 +498,7 @@ export class WebController {
       setFlash(request, 'success', 'Task deleted');
     }
 
-    response.redirect(`/orgs/${org.organizationId}/projects/${projectId}`);
+    redirectWith(request, response, `/orgs/${org.organizationId}/projects/${projectId}`);
   }
 
   private baseUrl(request: Request): string {

@@ -47,3 +47,17 @@ export function requireEmail(value: unknown): string {
 
   return text;
 }
+
+export function optionalUuid(value: unknown, field: string): string | null {
+  const text = typeof value === 'string' ? value.trim() : '';
+
+  if (text === '') {
+    return null;
+  }
+
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) {
+    throw new BadRequestException(`${field} is not valid`);
+  }
+
+  return text;
+}

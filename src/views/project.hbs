@@ -6,69 +6,132 @@
 
 <div class="card">
   <h2>Budget</h2>
-  <div class="row">
-    <div><div class="muted" style="font-size:13px">Budget</div><div style="font-size:20px">{{budgetFormatted}} ETB</div></div>
-    <div><div class="muted" style="font-size:13px">Spent</div><div style="font-size:20px">{{spentFormatted}} ETB</div></div>
-    <div><div class="muted" style="font-size:13px">Remaining</div><div style="font-size:20px;{{#if isOverBudget}}color:var(--danger){{/if}}">{{remainingFormatted}} ETB</div></div>
+  <div class="stats">
+    <div>
+      <div class="stat-label">Total budget</div>
+      <div class="stat-value">{{budgetFormatted}} <span class="unit">ETB</span></div>
+    </div>
+    <div>
+      <div class="stat-label">Spent</div>
+      <div class="stat-value">{{spentFormatted}} <span class="unit">ETB</span></div>
+    </div>
+    <div>
+      <div class="stat-label">Remaining</div>
+      <div class="stat-value {{#if isOverBudget}}over{{/if}}">{{remainingFormatted}} <span class="unit">ETB</span></div>
+    </div>
   </div>
-  <div class="meter {{#if isOverBudget}}over{{/if}}" style="margin-top:14px"><span style="width:{{percentUsed}}%"></span></div>
-  <p class="muted" style="font-size:13px;margin-bottom:0">Spent is the sum of the estimated cost of every task in this project.</p>
-</div>
-
-<div class="card">
-  <h2>Tasks</h2>
-  {{#if tasks.length}}
-    <table>
-      <thead>
-        <tr><th>Title</th><th>Status</th><th class="num">Estimated cost (ETB)</th><th></th></tr>
-      </thead>
-      <tbody>
-      {{#each tasks}}
-        <tr>
-          <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}" style="display:contents">
-            <td><input name="title" value="{{this.title}}" required></td>
-            <td>
-              <select name="status">
-                <option value="todo" {{#if this.isTodo}}selected{{/if}}>todo</option>
-                <option value="in_progress" {{#if this.isInProgress}}selected{{/if}}>in progress</option>
-                <option value="done" {{#if this.isDone}}selected{{/if}}>done</option>
-              </select>
-            </td>
-            <td class="num"><input class="num" name="estimatedCostEtb" type="number" min="0" step="0.01" value="{{this.estimatedCostEtb}}" required></td>
-            <td class="num"><button class="secondary" type="submit">Save</button></td>
-          </form>
-          <td class="num">
-            <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}/delete" style="margin:0">
-              <button class="danger" type="submit">Delete</button>
-            </form>
-          </td>
-        </tr>
-      {{/each}}
-      </tbody>
-    </table>
+  <div class="meter-row">
+    <div class="meter {{#if isOverBudget}}over{{/if}}"><span style="width:{{percentUsed}}%"></span></div>
+    <span class="meter-pct {{#if isOverBudget}}over{{/if}}">
+      {{#if isOverBudget}}Over budget{{else}}{{percentUsed}}% used{{/if}}
+    </span>
+  </div>
+  <p class="note">Spent is the sum of the estimated cost of every task in this project.</p>
+  {{#if isAdmin}}
+    <form method="post" action="/orgs/{{organization.id}}/projects/{{project.id}}/budget" class="inline-form card-foot">
+      <div class="field field-md">
+        <label for="p-budget">Total budget (ETB)</label>
+        <input id="p-budget" name="budgetEtb" type="number" min="0" step="0.01" value="{{project.budgetEtb}}" required>
+      </div>
+      <button type="submit">Update budget</button>
+    </form>
   {{else}}
-    <p class="empty">No tasks yet.</p>
+    <p class="note">Only organization admins can change the budget.</p>
   {{/if}}
 </div>
 
 <div class="card">
-  <h2>New task</h2>
-  <form method="post" action="/orgs/{{organization.id}}/projects/{{project.id}}/tasks" class="inline-form">
+  <div class="card-head">
+    <h2>Tasks</h2>
+    <span class="pill muted">{{tasks.length}}</span>
+  </div>
+  {{#if tasks.length}}
+    <div class="table-wrap wide">
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th class="c-status">Status</th>
+            <th class="c-assignee">Assignee</th>
+            <th class="num c-cost">Estimated cost (ETB)</th>
+            <th class="c-act" colspan="2"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+        {{#each tasks}}
+          <tr class="editable">
+            <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}" style="display:contents">
+              <td><input name="title" value="{{this.title}}" aria-label="Task title" required></td>
+              <td>
+                <select class="st-{{this.status}}" name="status" aria-label="Task status">
+                  <option value="todo" {{#if this.isTodo}}selected{{/if}}>To do</option>
+                  <option value="in_progress" {{#if this.isInProgress}}selected{{/if}}>In progress</option>
+                  <option value="done" {{#if this.isDone}}selected{{/if}}>Done</option>
+                </select>
+              </td>
+              <td>
+                <div class="assignee">
+                  {{#if this.isUnassigned}}
+                    <span class="avatar none" aria-hidden="true">&ndash;</span>
+                  {{else}}
+                    <span class="avatar" aria-hidden="true">{{this.assigneeInitials}}</span>
+                  {{/if}}
+                  <select name="assigneeUserId" aria-label="Assignee">
+                    <option value="">Unassigned</option>
+                    {{#each this.assignees}}
+                      <option value="{{this.userId}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+                    {{/each}}
+                  </select>
+                </div>
+              </td>
+              <td class="num"><input class="num" name="estimatedCostEtb" type="number" min="0" step="0.01" value="{{this.estimatedCostEtb}}" aria-label="Estimated cost in ETB" required></td>
+              <td class="act">
+                <button class="icon-btn save tip" type="submit" data-tip="Save changes" aria-label="Save changes">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+                </button>
+              </td>
+            </form>
+            <td class="act">
+              <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}/delete">
+                <button class="icon-btn remove tip" type="submit" data-tip="Delete task" aria-label="Delete task">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.75 4.5h10.5M6.5 4.5V3.25a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1V4.5M4.25 4.5l.5 8.1a1.4 1.4 0 0 0 1.4 1.3h3.7a1.4 1.4 0 0 0 1.4-1.3l.5-8.1"/></svg>
+                </button>
+              </form>
+            </td>
+          </tr>
+        {{/each}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    <p class="empty">No tasks yet. Add the first one below.</p>
+  {{/if}}
+
+  <form method="post" action="/orgs/{{organization.id}}/projects/{{project.id}}/tasks" class="inline-form card-foot">
     <div class="field">
       <label for="t-title">Title</label>
-      <input id="t-title" name="title" required>
+      <input id="t-title" name="title" placeholder="What needs doing?" required>
     </div>
-    <div class="field" style="flex:0 1 160px">
+    <div class="field field-sm">
       <label for="t-status">Status</label>
       <select id="t-status" name="status">
-        <option value="todo">todo</option>
-        <option value="in_progress">in progress</option>
-        <option value="done">done</option>
+        <option value="todo">To do</option>
+        <option value="in_progress">In progress</option>
+        <option value="done">Done</option>
       </select>
     </div>
-    <div class="field" style="flex:0 1 180px">
+    <div class="field field-sm">
+      <label for="t-assignee">Assignee</label>
+      <select id="t-assignee" name="assigneeUserId">
+        <option value="">Unassigned</option>
+        {{#each members}}
+          <option value="{{this.userId}}">{{this.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <div class="field field-md">
       <label for="t-cost">Estimated cost (ETB)</label>
-      <input id="t-cost" name="estimatedCostEtb" type="number" min="0" step="0.01" value="0" required>
+      <input id="t-cost" name="estimatedCostEtb" type="number" min="0" step="0.01" placeholder="0.00" required>
     </div>
     <button type="submit">Add task</button>
   </form>
