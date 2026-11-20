@@ -9,7 +9,7 @@ import { OrgMemberGuard } from '../common/guards/org-member.guard';
 import { httpExceptionMessage } from '../common/http-message';
 import { InvitationsService } from '../invitations/invitations.service';
 import { budgetSummary } from '../common/money';
-import { TaskStatus } from '../entities';
+import { TaskPriority, TaskStatus } from '../entities';
 import { OrgsService } from '../orgs/orgs.service';
 import { ProjectsService } from '../projects/projects.service';
 import { TasksService } from '../tasks/tasks.service';
@@ -19,8 +19,15 @@ import { optionalText, optionalUuid, requireEmail, requireMoney, requireOneOf, r
 import { WebExceptionFilter } from './web-exception.filter';
 
 const TASK_STATUSES = ['todo', 'in_progress', 'done'] as const;
+const TASK_PRIORITIES = ['low', 'medium', 'high'] as const;
 
 type Attempt<T> = { ok: true; value: T } | { ok: false };
+
+const PRIORITY_LABELS: Record<TaskPriority, string> = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+};
 
 const FORMER_MEMBER = 'Former member';
 
@@ -371,11 +378,15 @@ export class WebController {
     @Res() response: Response,
     @CurrentOrg() org: OrgContext,
     @Param('projectId') projectId: string,
+    @Query('priority') priority?: string,
   ): Promise<void> {
     const organization = await this.orgsService.findById(org.organizationId);
     const project = await this.projectsService.findOne(org.organizationId, projectId);
     const spentEtb = await this.projectsService.spendFor(org.organizationId, projectId);
-    const tasks = await this.tasksService.listForProject(org.organizationId, projectId);
+    const priorityFilter = TASK_PRIORITIES.find((value) => value === priority);
+    const tasks = await this.tasksService.listForProject(org.organizationId, projectId, {
+      priority: priorityFilter,
+    });
     const members = await this.orgsService.listMembers(org.organizationId);
 
     const assignable = members.map((membership) => ({
@@ -394,6 +405,13 @@ export class WebController {
       project,
       ...budgetSummary(project.budgetEtb, spentEtb),
       members: assignable,
+      priorityFilter: priorityFilter ?? '',
+      isFiltered: Boolean(priorityFilter),
+      priorityOptions: TASK_PRIORITIES.map((value) => ({
+        value,
+        label: PRIORITY_LABELS[value],
+        selected: value === priorityFilter,
+      })),
       tasks: tasks.map((task) => ({
         id: task.id,
         title: task.title,
@@ -402,6 +420,12 @@ export class WebController {
         isTodo: task.status === 'todo',
         isInProgress: task.status === 'in_progress',
         isDone: task.status === 'done',
+        priority: task.priority,
+        priorities: TASK_PRIORITIES.map((value) => ({
+          value,
+          label: PRIORITY_LABELS[value],
+          selected: value === task.priority,
+        })),
         assigneeName: assigneeNameOf(task.assigneeUserId, nameByUserId),
         assigneeInitials: task.assigneeUserId
           ? initialsOf(assigneeNameOf(task.assigneeUserId, nameByUserId))
@@ -445,6 +469,7 @@ export class WebController {
       this.tasksService.create(org.organizationId, projectId, {
         title: requireText(body.title, 'Task title', 200),
         status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
+        priority: requireOneOf<TaskPriority>(body.priority ?? 'medium', TASK_PRIORITIES, 'Priority'),
         estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
         assigneeUserId: optionalUuid(body.assigneeUserId, 'Assignee'),
       }),
@@ -471,6 +496,7 @@ export class WebController {
       this.tasksService.update(org.organizationId, taskId, {
         title: requireText(body.title, 'Task title', 200),
         status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
+        priority: requireOneOf<TaskPriority>(body.priority ?? 'medium', TASK_PRIORITIES, 'Priority'),
         estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
         assigneeUserId: optionalUuid(body.assigneeUserId, 'Assignee'),
       }),
