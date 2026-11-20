@@ -30,7 +30,7 @@ export class TasksService {
       query.andWhere('task.status = :status', { status: filter.status });
     }
 
-    return query.orderBy('task.created_at', 'ASC').getMany();
+    return query.orderBy('task.created_at', 'ASC').addOrderBy('task.id', 'ASC').getMany();
   }
 
   async findOne(organizationId: string, taskId: string): Promise<Task> {
