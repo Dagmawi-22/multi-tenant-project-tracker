@@ -3,17 +3,25 @@
 Projects and tasks with ETB budgets, shared by several organizations on one deployment.
 Each organization only ever sees its own data.
 
-- **Live:** _TODO_
+- **Live:** https://project-tracker-iqe7.onrender.com
 - **Repo:** https://github.com/Dagmawi-22/multi-tenant-project-tracker
-- **Green pipeline run:** _TODO_
+- **Green pipeline run:** https://github.com/Dagmawi-22/multi-tenant-project-tracker/actions/workflows/ci.yml?query=branch%3Amain+is%3Asuccess
 
-Demo accounts are whatever the deployment's `SEED_ADMIN_EMAIL` and `SEED_MEMBER_EMAIL` are set
-to; the admin can change the project budget and invite members, the member cannot. _Fill in the
-live credentials here before submitting._
+Credentials for the seeded demo accounts are sent separately by email rather than committed
+here. There are two, in one organization: an admin, who can change a project's budget and
+invite members, and a member, who cannot do either.
+
+The live instance runs on Render's free tier and Neon autosuspends, so the first request after
+a quiet period takes a few seconds to wake.
 
 ## Architecture
 
 NestJS + TypeORM + PostgreSQL (Neon), Handlebars pages, deployed to Render by GitHub Actions.
+
+A user can belong to several organizations and switches between them from `/orgs`. Inside one,
+admins create projects and set budgets; any member adds tasks, each with a status, a priority,
+an assignee drawn from that organization's members, and an estimated cost that rolls up into
+spent-vs-budget. Tasks can be filtered by priority.
 
 One app serves both the server-rendered UI and a JSON API under `/api`, through the same guards
 and services, so there is one authorization path rather than two that can drift. Tables:
@@ -36,7 +44,7 @@ never hit the live database by accident. Without SMTP configured, invitations ar
 and the link is shown in the UI instead of emailed.
 
 The seed builds its organization, admin and member from the `SEED_*` variables, falling back to
-the sample names in `.env.example`. Passwords have no production fallback: with
+the sample names in `src/database/seed.ts`. Passwords have no production fallback: with
 `NODE_ENV=production` the seed stops unless `SEED_ADMIN_PASSWORD` and `SEED_MEMBER_PASSWORD`
 (or a shared `SEED_PASSWORD`) are set, so a deployment can never end up with a known password.
 
