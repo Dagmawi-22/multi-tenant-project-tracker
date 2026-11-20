@@ -80,6 +80,7 @@
   .stat-value.over { color: var(--danger); }
 
   .table-wrap { overflow-x: auto; }
+  .table-wrap.wide > table { min-width: 620px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th {
     text-align: left; color: var(--muted); font-weight: 600; font-size: 11px;
@@ -158,10 +159,10 @@
   .auth-foot { font-size: 14px; color: var(--muted); margin: 16px 0 0; text-align: center; }
 
   .toast {
-    position: fixed; top: 16px; right: 16px; z-index: 50; max-width: 360px;
+    position: fixed; bottom: 16px; right: 16px; z-index: 50; max-width: 360px;
     display: flex; gap: 10px; align-items: flex-start;
     padding: 11px 14px; border-radius: 9px; font-size: 14px; border: 1px solid;
-    box-shadow: 0 6px 24px rgba(16, 24, 40, 0.12); animation: toast-in 0.18s ease-out;
+    box-shadow: 0 8px 28px rgba(16, 24, 40, 0.14); animation: toast-in 0.18s ease-out;
   }
   .toast.success { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
   .toast.error { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger); }
@@ -170,7 +171,7 @@
     padding: 0 0 0 6px; cursor: pointer;
   }
   .toast-close:hover { background: none; opacity: 0.6; }
-  @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 
   @media (max-width: 640px) {
     .topbar { padding: 0 16px; }
