@@ -5,9 +5,7 @@
 
   <div class="card">
     {{#if needsAccount}}
-      <p class="muted" style="font-size:14px;margin-top:0">
-        You do not have an account yet. Choose a name and password to create one and join.
-      </p>
+      <p class="hint">Choose a name and password to create your account and join.</p>
       <form method="post" action="/invitations/accept" class="stack">
         <input type="hidden" name="token" value="{{token}}">
         <div class="field">
@@ -26,14 +24,12 @@
       </form>
     {{else}}
       {{#if signedInAsInvitee}}
-        <form method="post" action="/invitations/accept" class="stack">
+        <form method="post" action="/invitations/accept">
           <input type="hidden" name="token" value="{{token}}">
           <button type="submit">Accept invitation</button>
         </form>
       {{else}}
-        <p class="muted" style="font-size:14px;margin-top:0">
-          An account already exists for {{email}}. Sign in with that account to accept this invitation.
-        </p>
+        <p class="hint">An account already exists for {{email}}. Sign in with it to accept this invitation.</p>
         <a class="btn" href="/login">Sign in</a>
       {{/if}}
     {{/if}}
