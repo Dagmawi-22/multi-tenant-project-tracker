@@ -376,6 +376,14 @@ export class WebController {
     const project = await this.projectsService.findOne(org.organizationId, projectId);
     const spentEtb = await this.projectsService.spendFor(org.organizationId, projectId);
     const tasks = await this.tasksService.listForProject(org.organizationId, projectId);
+    const members = await this.orgsService.listMembers(org.organizationId);
+
+    const assignable = members.map((membership) => ({
+      userId: membership.userId,
+      name: membership.user.name,
+    }));
+
+    const nameByUserId = new Map(assignable.map((member) => [member.userId, member.name]));
 
     response.render('project', {
       ...this.baseLocals(request),
@@ -385,6 +393,7 @@ export class WebController {
       isAdmin: org.role === 'admin',
       project,
       ...budgetSummary(project.budgetEtb, spentEtb),
+      members: assignable,
       tasks: tasks.map((task) => ({
         id: task.id,
         title: task.title,
@@ -411,6 +420,7 @@ export class WebController {
         title: requireText(body.title, 'Task title', 200),
         status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
         estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
+        assigneeUserId: optionalUuid(body.assigneeUserId, 'Assignee'),
       }),
     );
 
@@ -436,6 +446,7 @@ export class WebController {
         title: requireText(body.title, 'Task title', 200),
         status: requireOneOf<TaskStatus>(body.status ?? 'todo', TASK_STATUSES, 'Status'),
         estimatedCostEtb: requireMoney(body.estimatedCostEtb, 'Estimated cost'),
+        assigneeUserId: optionalUuid(body.assigneeUserId, 'Assignee'),
       }),
     );
 

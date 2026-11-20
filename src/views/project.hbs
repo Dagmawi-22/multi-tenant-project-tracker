@@ -40,9 +40,10 @@
         <thead>
           <tr>
             <th>Title</th>
-            <th>Status</th>
-            <th class="num">Estimated cost (ETB)</th>
-            <th colspan="2"></th>
+            <th class="c-status">Status</th>
+            <th class="c-assignee">Assignee</th>
+            <th class="num c-cost">Estimated cost (ETB)</th>
+            <th class="c-act" colspan="2"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
@@ -68,6 +69,21 @@
               <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}/delete">
                 <button class="icon-btn remove tip" type="submit" data-tip="Delete task" aria-label="Delete task">
                   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.75 4.5h10.5M6.5 4.5V3.25a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1V4.5M4.25 4.5l.5 8.1a1.4 1.4 0 0 0 1.4 1.3h3.7a1.4 1.4 0 0 0 1.4-1.3l.5-8.1"/></svg>
+              <td>
+                <div class="assignee">
+                  {{#if this.isUnassigned}}
+                    <span class="avatar none" aria-hidden="true">&ndash;</span>
+                  {{else}}
+                    <span class="avatar" aria-hidden="true">{{this.assigneeInitials}}</span>
+                  {{/if}}
+                  <select name="assigneeUserId" aria-label="Assignee">
+                    <option value="">Unassigned</option>
+                    {{#each this.assignees}}
+                      <option value="{{this.userId}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+                    {{/each}}
+                  </select>
+                </div>
+              </td>
                 </button>
               </form>
             </td>
@@ -79,7 +95,6 @@
   {{else}}
     <p class="empty">No tasks yet. Add the first one below.</p>
   {{/if}}
-</div>
 
   <form method="post" action="/orgs/{{organization.id}}/projects/{{project.id}}/tasks" class="inline-form card-foot">
     <div class="field">
@@ -89,9 +104,18 @@
     <div class="field field-sm">
       <label for="t-status">Status</label>
       <select id="t-status" name="status">
-        <option value="todo">todo</option>
-        <option value="in_progress">in progress</option>
-        <option value="done">done</option>
+        <option value="todo">To do</option>
+        <option value="in_progress">In progress</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="field field-sm">
+      <label for="t-assignee">Assignee</label>
+      <select id="t-assignee" name="assigneeUserId">
+        <option value="">Unassigned</option>
+        {{#each members}}
+          <option value="{{this.userId}}">{{this.name}}</option>
+        {{/each}}
       </select>
     </div>
     <div class="field field-md">
@@ -100,3 +124,4 @@
     </div>
     <button type="submit">Add task</button>
   </form>
+</div>
