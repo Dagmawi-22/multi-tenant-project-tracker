@@ -5,7 +5,6 @@ import { destroySession, establishSession } from '../auth/session.helpers';
 import { CurrentOrg, OrgContext } from '../common/decorators/org-context.decorator';
 import { AuthenticatedGuard } from '../common/guards/authenticated.guard';
 import { OrgAdminGuard } from '../common/guards/org-admin.guard';
-import { OrgMemberGuard } from '../common/guards/org-member.guard';
 import { httpExceptionMessage } from '../common/http-message';
 import { InvitationsService } from '../invitations/invitations.service';
 import { budgetSummary } from '../common/money';
@@ -179,7 +178,7 @@ export class WebController {
   }
 
   @Get('orgs/:orgId')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard)
+  @UseGuards(AuthenticatedGuard)
   async orgPage(@Req() request: Request, @Res() response: Response, @CurrentOrg() org: OrgContext): Promise<void> {
     const [organization, projects, members, invitations] = await Promise.all([
       this.orgsService.findById(org.organizationId),
@@ -224,7 +223,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/invitations')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  @UseGuards(AuthenticatedGuard, OrgAdminGuard)
   async invite(
     @Req() request: Request,
     @Res() response: Response,
@@ -258,7 +257,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/invitations/:invitationId/delete')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  @UseGuards(AuthenticatedGuard, OrgAdminGuard)
   async revokeInvitation(
     @Req() request: Request,
     @Res() response: Response,
@@ -332,7 +331,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/members/:userId/delete')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  @UseGuards(AuthenticatedGuard, OrgAdminGuard)
   async removeMember(
     @Req() request: Request,
     @Res() response: Response,
@@ -349,7 +348,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/projects')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  @UseGuards(AuthenticatedGuard, OrgAdminGuard)
   async createProject(
     @Req() request: Request,
     @Res() response: Response,
@@ -372,7 +371,7 @@ export class WebController {
   }
 
   @Get('orgs/:orgId/projects/:projectId')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard)
+  @UseGuards(AuthenticatedGuard)
   async projectPage(
     @Req() request: Request,
     @Res() response: Response,
@@ -437,7 +436,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/projects/:projectId/budget')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  @UseGuards(AuthenticatedGuard, OrgAdminGuard)
   async updateProjectBudget(
     @Req() request: Request,
     @Res() response: Response,
@@ -457,7 +456,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/projects/:projectId/tasks')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard)
+  @UseGuards(AuthenticatedGuard)
   async createTask(
     @Req() request: Request,
     @Res() response: Response,
@@ -483,7 +482,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/projects/:projectId/tasks/:taskId')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard)
+  @UseGuards(AuthenticatedGuard)
   async updateTask(
     @Req() request: Request,
     @Res() response: Response,
@@ -510,7 +509,7 @@ export class WebController {
   }
 
   @Post('orgs/:orgId/projects/:projectId/tasks/:taskId/delete')
-  @UseGuards(AuthenticatedGuard, OrgMemberGuard)
+  @UseGuards(AuthenticatedGuard)
   async deleteTask(
     @Req() request: Request,
     @Res() response: Response,

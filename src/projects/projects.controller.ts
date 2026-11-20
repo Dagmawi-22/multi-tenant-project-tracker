@@ -2,12 +2,11 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, UseGuards } 
 import { CurrentOrg, OrgContext } from '../common/decorators/org-context.decorator';
 import { AuthenticatedGuard } from '../common/guards/authenticated.guard';
 import { OrgAdminGuard } from '../common/guards/org-admin.guard';
-import { OrgMemberGuard } from '../common/guards/org-member.guard';
 import { SaveProjectDto } from './dto/save-project.dto';
 import { ProjectsService } from './projects.service';
 
 @Controller('api/orgs/:orgId/projects')
-@UseGuards(AuthenticatedGuard, OrgMemberGuard)
+@UseGuards(AuthenticatedGuard)
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
