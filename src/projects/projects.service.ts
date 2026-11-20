@@ -106,6 +106,14 @@ export class ProjectsService {
     return this.projects.save(project);
   }
 
+  async updateBudget(organizationId: string, projectId: string, budgetEtb: string): Promise<Project> {
+    const project = await this.findOne(organizationId, projectId);
+
+    project.budgetEtb = budgetEtb;
+
+    return this.projects.save(project);
+  }
+
   async remove(organizationId: string, projectId: string): Promise<void> {
     const result = await this.projects.delete({ id: projectId, organizationId });
 

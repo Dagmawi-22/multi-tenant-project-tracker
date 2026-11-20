@@ -402,8 +402,34 @@ export class WebController {
         isTodo: task.status === 'todo',
         isInProgress: task.status === 'in_progress',
         isDone: task.status === 'done',
+        assigneeName: assigneeNameOf(task.assigneeUserId, nameByUserId),
+        assigneeInitials: task.assigneeUserId
+          ? initialsOf(assigneeNameOf(task.assigneeUserId, nameByUserId))
+          : '',
+        isUnassigned: !task.assigneeUserId,
+        assignees: optionsFor(task.assigneeUserId, assignable, nameByUserId),
       })),
     });
+  }
+
+  @Post('orgs/:orgId/projects/:projectId/budget')
+  @UseGuards(AuthenticatedGuard, OrgMemberGuard, OrgAdminGuard)
+  async updateProjectBudget(
+    @Req() request: Request,
+    @Res() response: Response,
+    @CurrentOrg() org: OrgContext,
+    @Param('projectId') projectId: string,
+    @Body() body: Record<string, string>,
+  ): Promise<void> {
+    const result = await this.attempt(request, () =>
+      this.projectsService.updateBudget(org.organizationId, projectId, requireMoney(body.budgetEtb, 'Budget')),
+    );
+
+    if (result.ok) {
+      setFlash(request, 'success', 'Budget updated');
+    }
+
+    redirectWith(request, response, `/orgs/${org.organizationId}/projects/${projectId}`);
   }
 
   @Post('orgs/:orgId/projects/:projectId/tasks')

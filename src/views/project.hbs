@@ -27,6 +27,17 @@
     </span>
   </div>
   <p class="note">Spent is the sum of the estimated cost of every task in this project.</p>
+  {{#if isAdmin}}
+    <form method="post" action="/orgs/{{organization.id}}/projects/{{project.id}}/budget" class="inline-form card-foot">
+      <div class="field field-md">
+        <label for="p-budget">Total budget (ETB)</label>
+        <input id="p-budget" name="budgetEtb" type="number" min="0" step="0.01" value="{{project.budgetEtb}}" required>
+      </div>
+      <button type="submit">Update budget</button>
+    </form>
+  {{else}}
+    <p class="note">Only organization admins can change the budget.</p>
+  {{/if}}
 </div>
 
 <div class="card">
@@ -58,17 +69,6 @@
                   <option value="done" {{#if this.isDone}}selected{{/if}}>Done</option>
                 </select>
               </td>
-              <td class="num"><input class="num" name="estimatedCostEtb" type="number" min="0" step="0.01" value="{{this.estimatedCostEtb}}" aria-label="Estimated cost in ETB" required></td>
-              <td class="act">
-                <button class="icon-btn save tip" type="submit" data-tip="Save changes" aria-label="Save changes">
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
-                </button>
-              </td>
-            </form>
-            <td class="act">
-              <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}/delete">
-                <button class="icon-btn remove tip" type="submit" data-tip="Delete task" aria-label="Delete task">
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.75 4.5h10.5M6.5 4.5V3.25a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1V4.5M4.25 4.5l.5 8.1a1.4 1.4 0 0 0 1.4 1.3h3.7a1.4 1.4 0 0 0 1.4-1.3l.5-8.1"/></svg>
               <td>
                 <div class="assignee">
                   {{#if this.isUnassigned}}
@@ -84,6 +84,17 @@
                   </select>
                 </div>
               </td>
+              <td class="num"><input class="num" name="estimatedCostEtb" type="number" min="0" step="0.01" value="{{this.estimatedCostEtb}}" aria-label="Estimated cost in ETB" required></td>
+              <td class="act">
+                <button class="icon-btn save tip" type="submit" data-tip="Save changes" aria-label="Save changes">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5"/></svg>
+                </button>
+              </td>
+            </form>
+            <td class="act">
+              <form method="post" action="/orgs/{{../organization.id}}/projects/{{../project.id}}/tasks/{{this.id}}/delete">
+                <button class="icon-btn remove tip" type="submit" data-tip="Delete task" aria-label="Delete task">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.75 4.5h10.5M6.5 4.5V3.25a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1V4.5M4.25 4.5l.5 8.1a1.4 1.4 0 0 0 1.4 1.3h3.7a1.4 1.4 0 0 0 1.4-1.3l.5-8.1"/></svg>
                 </button>
               </form>
             </td>
