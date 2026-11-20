@@ -5,7 +5,7 @@ Each organization only ever sees its own data.
 
 - **Live:** https://project-tracker-iqe7.onrender.com
 - **Repo:** https://github.com/Dagmawi-22/multi-tenant-project-tracker
-- **Green pipeline run:** https://github.com/Dagmawi-22/multi-tenant-project-tracker/actions/workflows/ci.yml?query=branch%3Amain+is%3Asuccess
+- **Green pipeline run:** https://github.com/Dagmawi-22/multi-tenant-project-tracker/actions/runs/44727425283
 
 Credentials for the seeded demo accounts are sent separately by email rather than committed
 here. There are two, in one organization: an admin, who can change a project's budget and
