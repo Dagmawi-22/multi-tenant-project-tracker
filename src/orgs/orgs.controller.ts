@@ -3,7 +3,6 @@ import { CurrentUserId } from '../common/decorators/current-user.decorator';
 import { CurrentOrg, OrgContext } from '../common/decorators/org-context.decorator';
 import { AuthenticatedGuard } from '../common/guards/authenticated.guard';
 import { OrgAdminGuard } from '../common/guards/org-admin.guard';
-import { OrgMemberGuard } from '../common/guards/org-member.guard';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { OrgsService } from './orgs.service';
@@ -32,7 +31,6 @@ export class OrgsController {
   }
 
   @Get(':orgId')
-  @UseGuards(OrgMemberGuard)
   async detail(@CurrentOrg() org: OrgContext) {
     const organization = await this.orgsService.findById(org.organizationId);
 
@@ -40,7 +38,6 @@ export class OrgsController {
   }
 
   @Get(':orgId/members')
-  @UseGuards(OrgMemberGuard)
   async members(@CurrentOrg() org: OrgContext) {
     const memberships = await this.orgsService.listMembers(org.organizationId);
 
@@ -53,7 +50,7 @@ export class OrgsController {
   }
 
   @Post(':orgId/members')
-  @UseGuards(OrgMemberGuard, OrgAdminGuard)
+  @UseGuards(OrgAdminGuard)
   async addMember(@CurrentOrg() org: OrgContext, @Body() dto: AddMemberDto) {
     const membership = await this.orgsService.addMember(org.organizationId, dto.email, dto.role);
 
@@ -61,7 +58,7 @@ export class OrgsController {
   }
 
   @Delete(':orgId/members/:userId')
-  @UseGuards(OrgMemberGuard, OrgAdminGuard)
+  @UseGuards(OrgAdminGuard)
   @HttpCode(204)
   async removeMember(@CurrentOrg() org: OrgContext, @Param('userId') userId: string) {
     await this.orgsService.removeMember(org.organizationId, userId);

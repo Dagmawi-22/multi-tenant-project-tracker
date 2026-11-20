@@ -14,13 +14,19 @@ export class OrgMemberGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
+    const orgParam = request.params?.orgId;
+
+    if (orgParam === undefined) {
+      return true;
+    }
+
     const userId = request.session?.userId;
 
     if (!userId) {
       throw new UnauthorizedException('Authentication required');
     }
 
-    const organizationId = String(request.params.orgId ?? '');
+    const organizationId = String(orgParam);
 
     if (!isUUID(organizationId)) {
       throw new NotFoundException('Organization not found');

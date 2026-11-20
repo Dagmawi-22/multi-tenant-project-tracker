@@ -1,13 +1,12 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentOrg, OrgContext } from '../common/decorators/org-context.decorator';
 import { AuthenticatedGuard } from '../common/guards/authenticated.guard';
-import { OrgMemberGuard } from '../common/guards/org-member.guard';
 import { TaskPriority, TaskStatus } from '../entities';
 import { SaveTaskDto } from './dto/save-task.dto';
 import { TasksService } from './tasks.service';
 
 @Controller('api/orgs/:orgId/projects/:projectId/tasks')
-@UseGuards(AuthenticatedGuard, OrgMemberGuard)
+@UseGuards(AuthenticatedGuard)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
