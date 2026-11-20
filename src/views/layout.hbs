@@ -84,7 +84,7 @@
 
   .table-wrap { overflow-x: auto; }
   @media (hover: hover) and (min-width: 760px) { .table-wrap { overflow: visible; } }
-  .table-wrap.wide > table { min-width: 780px; }
+  .table-wrap.wide > table { min-width: 880px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th {
     text-align: left; color: var(--muted); font-weight: 600; font-size: 11px;
@@ -95,9 +95,10 @@
   tbody tr:hover td { background: var(--sunken); }
   .num { text-align: right; font-variant-numeric: tabular-nums; }
   .over { color: var(--danger); }
-  .c-status { width: 140px; }
-  .c-assignee { width: 195px; }
-  .c-cost { width: 170px; }
+  .c-status { width: 122px; }
+  .c-priority { width: 110px; }
+  .c-assignee { width: 168px; }
+  .c-cost { width: 152px; }
   .c-act { width: 1%; }
   td.act { width: 1%; white-space: nowrap; padding-right: 8px; }
   td.act:last-child { padding-right: 0; }
@@ -124,6 +125,12 @@
   .st-todo { color: var(--muted); }
   .st-in_progress { color: #8a5a12; }
   .st-done { color: var(--accent); }
+  .pr-low { color: var(--muted); }
+  .pr-medium { color: var(--text); }
+  .pr-high { color: var(--danger); font-weight: 600; }
+  .filter { display: flex; align-items: center; gap: 8px; }
+  .filter label { margin: 0; font-size: 12px; white-space: nowrap; }
+  .filter select { width: auto; padding-top: 5px; padding-bottom: 5px; font-size: 13px; }
 
   label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
   input, select, textarea {

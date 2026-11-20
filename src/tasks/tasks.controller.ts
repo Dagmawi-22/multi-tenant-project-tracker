@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Use
 import { CurrentOrg, OrgContext } from '../common/decorators/org-context.decorator';
 import { AuthenticatedGuard } from '../common/guards/authenticated.guard';
 import { OrgMemberGuard } from '../common/guards/org-member.guard';
-import { TaskStatus } from '../entities';
+import { TaskPriority, TaskStatus } from '../entities';
 import { SaveTaskDto } from './dto/save-task.dto';
 import { TasksService } from './tasks.service';
 
@@ -16,8 +16,9 @@ export class TasksController {
     @CurrentOrg() org: OrgContext,
     @Param('projectId') projectId: string,
     @Query('status') status?: TaskStatus,
+    @Query('priority') priority?: TaskPriority,
   ) {
-    return this.tasksService.listForProject(org.organizationId, projectId, { status });
+    return this.tasksService.listForProject(org.organizationId, projectId, { status, priority });
   }
 
   @Post()

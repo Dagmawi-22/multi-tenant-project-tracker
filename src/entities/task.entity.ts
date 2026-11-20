@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, Primary
 import { Project } from './project.entity';
 
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskPriority = 'low' | 'medium' | 'high';
 
 @Entity('tasks')
 @Index(['projectId'])
@@ -22,6 +23,9 @@ export class Task {
 
   @Column({ type: 'text', default: 'todo' })
   status!: TaskStatus;
+
+  @Column({ type: 'text', default: 'medium' })
+  priority!: TaskPriority;
 
   @Column({ type: 'numeric', precision: 14, scale: 2, name: 'estimated_cost_etb', default: 0 })
   estimatedCostEtb!: string;

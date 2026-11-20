@@ -44,6 +44,17 @@
   <div class="card-head">
     <h2>Tasks</h2>
     <span class="pill muted">{{tasks.length}}</span>
+    <span class="spacer"></span>
+    <form method="get" class="filter">
+      <label for="f-priority">Priority</label>
+      <select id="f-priority" name="priority" onchange="this.form.submit()">
+        <option value="">All</option>
+        {{#each priorityOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+        {{/each}}
+      </select>
+      <noscript><button class="secondary small" type="submit">Filter</button></noscript>
+    </form>
   </div>
   {{#if tasks.length}}
     <div class="table-wrap wide">
@@ -52,6 +63,7 @@
           <tr>
             <th>Title</th>
             <th class="c-status">Status</th>
+            <th class="c-priority">Priority</th>
             <th class="c-assignee">Assignee</th>
             <th class="num c-cost">Estimated cost (ETB)</th>
             <th class="c-act" colspan="2"><span class="sr-only">Actions</span></th>
@@ -67,6 +79,13 @@
                   <option value="todo" {{#if this.isTodo}}selected{{/if}}>To do</option>
                   <option value="in_progress" {{#if this.isInProgress}}selected{{/if}}>In progress</option>
                   <option value="done" {{#if this.isDone}}selected{{/if}}>Done</option>
+                </select>
+              </td>
+              <td>
+                <select class="pr-{{this.priority}}" name="priority" aria-label="Task priority">
+                  {{#each this.priorities}}
+                    <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+                  {{/each}}
                 </select>
               </td>
               <td>
@@ -104,7 +123,11 @@
       </table>
     </div>
   {{else}}
-    <p class="empty">No tasks yet. Add the first one below.</p>
+    {{#if isFiltered}}
+      <p class="empty">No tasks with that priority. <a href="/orgs/{{organization.id}}/projects/{{project.id}}">Show all</a></p>
+    {{else}}
+      <p class="empty">No tasks yet. Add the first one below.</p>
+    {{/if}}
   {{/if}}
 
   <form method="post" action="/orgs/{{organization.id}}/projects/{{project.id}}/tasks" class="inline-form card-foot">
@@ -118,6 +141,14 @@
         <option value="todo">To do</option>
         <option value="in_progress">In progress</option>
         <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="field field-sm">
+      <label for="t-priority">Priority</label>
+      <select id="t-priority" name="priority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
       </select>
     </div>
     <div class="field field-sm">

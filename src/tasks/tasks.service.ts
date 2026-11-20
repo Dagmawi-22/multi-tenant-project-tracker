@@ -2,12 +2,13 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
-import { Membership, Task, TaskStatus } from '../entities';
+import { Membership, Task, TaskPriority, TaskStatus } from '../entities';
 import { ProjectsService } from '../projects/projects.service';
 import { SaveTaskDto } from './dto/save-task.dto';
 
 export interface TaskFilter {
   status?: TaskStatus;
+  priority?: TaskPriority;
 }
 
 @Injectable()
@@ -30,6 +31,10 @@ export class TasksService {
 
     if (filter.status) {
       query.andWhere('task.status = :status', { status: filter.status });
+    }
+
+    if (filter.priority) {
+      query.andWhere('task.priority = :priority', { priority: filter.priority });
     }
 
     return query.orderBy('task.created_at', 'ASC').addOrderBy('task.id', 'ASC').getMany();
@@ -57,6 +62,7 @@ export class TasksService {
       projectId,
       title: dto.title,
       status: dto.status ?? 'todo',
+      priority: dto.priority ?? 'medium',
       estimatedCostEtb: dto.estimatedCostEtb,
       assigneeUserId: await this.resolveAssignee(organizationId, dto.assigneeUserId),
     });
@@ -69,6 +75,7 @@ export class TasksService {
 
     task.title = dto.title;
     task.status = dto.status ?? task.status;
+    task.priority = dto.priority ?? task.priority;
     task.estimatedCostEtb = dto.estimatedCostEtb;
 
     if (dto.assigneeUserId !== undefined) {

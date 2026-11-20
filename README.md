@@ -4,10 +4,12 @@ Projects and tasks with ETB budgets, shared by several organizations on one depl
 Each organization only ever sees its own data.
 
 - **Live:** _TODO_
-- **Repo:** _TODO_
+- **Repo:** https://github.com/Dagmawi-22/multi-tenant-project-tracker
 - **Green pipeline run:** _TODO_
 
-Demo accounts, password `Password123!`: `hanna@addisbuild.et` (admin), `yonas@addisbuild.et` (member).
+Demo accounts are whatever the deployment's `SEED_ADMIN_EMAIL` and `SEED_MEMBER_EMAIL` are set
+to; the admin can change the project budget and invite members, the member cannot. _Fill in the
+live credentials here before submitting._
 
 ## Architecture
 
@@ -26,7 +28,7 @@ cp .env.example .env     # DATABASE_URL and SESSION_SECRET are the only required
 npm run migration:run
 npm run seed
 npm run start:dev        # http://localhost:3000
-npm test                 # 15 specs; needs TEST_DATABASE_URL
+npm test                 # 21 specs; needs TEST_DATABASE_URL
 ```
 
 Tests truncate every table, so they refuse to run unless `TEST_DATABASE_URL` is set and can
@@ -61,13 +63,29 @@ serves traffic.
 npm run migration:show / migration:run / migration:revert
 ```
 
-Adding `tasks.priority` uses the safe pattern: add the column nullable, backfill existing rows
-to `medium`, then set the default and the `NOT NULL` and `CHECK` constraints — three steps, not
-one `ADD COLUMN NOT NULL DEFAULT`, because old code is still running during the deploy.
+### `AddTaskPriority` — the shipped example
 
-**Rollback:** `npm run migration:revert` runs the latest `down`. Dropping a column destroys its
-data, so in practice you roll the application back first (old code ignores the new column),
-confirm health, and only then drop.
+`tasks.priority` was added to a database that already had live rows, in five ordered steps
+rather than one `ADD COLUMN NOT NULL DEFAULT`:
+
+1. `ADD COLUMN priority text` — nullable, so the write is instant and old rows stay valid.
+2. `UPDATE tasks SET priority = 'medium' WHERE priority IS NULL` — the backfill.
+3. `SET DEFAULT 'medium'` — new inserts from old code still satisfy step 4.
+4. `SET NOT NULL` — only safe once no row is null.
+5. `ADD CONSTRAINT tasks_priority_check CHECK (priority IN ('low','medium','high'))`.
+
+The split matters because old and new code run side by side during a deploy. A nullable column
+with a default is readable by the old code, which ignores it, and writable by the new code
+before the constraint lands. An index on `(organization_id, priority)` backs the filter, and
+keeps the tenant column leftmost so it also serves unfiltered reads.
+
+**Rollback:** `npm run migration:prod:revert` runs the `down` — drop index, drop constraint,
+drop column — and was verified by reverting and re-running against a database holding rows:
+`down` left every row intact, and `up` backfilled each one to `medium` again.
+
+Dropping a column destroys its data, so the real rollback order is to roll the *application*
+back first (old code ignores `priority`), confirm health, and only then drop the column if the
+change is truly being abandoned.
 
 ## Tenant isolation
 
