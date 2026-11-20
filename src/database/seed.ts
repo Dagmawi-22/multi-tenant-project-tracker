@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { DataSource, EntityManager } from 'typeorm';
 import { hashPassword } from '../auth/password';
-import { Membership, Organization, Project, Task, User } from '../entities';
+import { Membership, MembershipRole, Organization, Project, Task, User } from '../entities';
 import dataSource from './data-source';
 
 const DEV_PASSWORD = 'Password123!';
@@ -58,26 +58,64 @@ async function createUser(manager: EntityManager, account: SeedAccount): Promise
   );
 }
 
+async function ensureUser(
+  manager: EntityManager,
+  account: SeedAccount,
+): Promise<{ user: User; created: boolean }> {
+  const existing = await manager.findOne(User, { where: { email: account.email } });
+
+  if (existing) {
+    return { user: existing, created: false };
+  }
+
+  return { user: await createUser(manager, account), created: true };
+}
+
+async function ensureMembership(
+  manager: EntityManager,
+  userId: string,
+  organizationId: string,
+  role: MembershipRole,
+): Promise<void> {
+  const existing = await manager.findOne(Membership, { where: { userId, organizationId } });
+
+  if (!existing) {
+    await manager.save(manager.create(Membership, { userId, organizationId, role }));
+    return;
+  }
+
+  if (existing.role !== role) {
+    existing.role = role;
+    await manager.save(existing);
+  }
+}
+
+function describe(account: SeedAccount, created: boolean): string {
+  return created ? `${account.email} (created)` : `${account.email} (already existed, password unchanged)`;
+}
+
 async function seed(source: DataSource, config: SeedConfig): Promise<void> {
-  const { organizationName: ORGANIZATION_NAME } = config;
-
   await source.transaction(async (manager) => {
-    const existing = await manager.findOne(Organization, { where: { name: ORGANIZATION_NAME } });
+    const found = await manager.findOne(Organization, { where: { name: config.organizationName } });
+    const organization =
+      found ?? (await manager.save(manager.create(Organization, { name: config.organizationName })));
 
-    if (existing) {
-      console.log(`Seed skipped: "${ORGANIZATION_NAME}" already exists (${existing.id})`);
+    const admin = await ensureUser(manager, config.admin);
+    const member = await ensureUser(manager, config.member);
+
+    await ensureMembership(manager, admin.user.id, organization.id, 'admin');
+    await ensureMembership(manager, member.user.id, organization.id, 'member');
+
+    console.log(`Organization "${organization.name}" (${organization.id}) ${found ? 'reused' : 'created'}`);
+    console.log(`  admin:  ${describe(config.admin, admin.created)}`);
+    console.log(`  member: ${describe(config.member, member.created)}`);
+
+    const projects = await manager.count(Project, { where: { organizationId: organization.id } });
+
+    if (projects > 0) {
+      console.log(`  sample project skipped: the organization already has ${projects} project(s)`);
       return;
     }
-
-    const admin = await createUser(manager, config.admin);
-    const member = await createUser(manager, config.member);
-
-    const organization = await manager.save(manager.create(Organization, { name: ORGANIZATION_NAME }));
-
-    await manager.save([
-      manager.create(Membership, { userId: admin.id, organizationId: organization.id, role: 'admin' }),
-      manager.create(Membership, { userId: member.id, organizationId: organization.id, role: 'member' }),
-    ]);
 
     const project = await manager.save(
       manager.create(Project, {
@@ -119,9 +157,6 @@ async function seed(source: DataSource, config: SeedConfig): Promise<void> {
       }),
     ]);
 
-    console.log(`Seeded organization "${organization.name}" (${organization.id})`);
-    console.log(`  admin:  ${config.admin.email}`);
-    console.log(`  member: ${config.member.email}`);
     console.log(`  project: ${project.name} with 4 tasks`);
   });
 }
