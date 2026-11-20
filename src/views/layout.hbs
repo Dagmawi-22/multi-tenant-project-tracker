@@ -79,9 +79,12 @@
   .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
   .stat-value { font-size: 20px; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .stat-value.over { color: var(--danger); }
+  .stat-value .unit { font-size: 13px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+  .stat-value.over .unit { color: var(--danger); opacity: 0.75; }
 
   .table-wrap { overflow-x: auto; }
-  .table-wrap.wide > table { min-width: 620px; }
+  @media (hover: hover) and (min-width: 760px) { .table-wrap { overflow: visible; } }
+  .table-wrap.wide > table { min-width: 780px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   th {
     text-align: left; color: var(--muted); font-weight: 600; font-size: 11px;
@@ -129,6 +132,46 @@
   button[disabled], .btn[disabled] { opacity: 0.55; cursor: progress; }
   button[disabled]:hover, .btn[disabled]:hover { background: var(--accent); border-color: var(--accent); }
   form[aria-busy='true'] input, form[aria-busy='true'] select { opacity: 0.7; pointer-events: none; }
+  .is-busy-field { opacity: 0.7; pointer-events: none; }
+  button.icon-btn {
+    position: relative;
+    width: 30px; height: 30px; padding: 0; border-radius: var(--radius-sm);
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid transparent; color: var(--muted);
+  }
+  button.icon-btn svg { width: 15px; height: 15px; display: block; }
+  button.icon-btn:hover { background: var(--sunken); border-color: var(--border); color: var(--text); }
+  button.icon-btn.save:hover { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+  button.icon-btn.remove:hover { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger); }
+  tr.dirty button.icon-btn.save { background: var(--accent); border-color: var(--accent); color: #fff; }
+  tr.dirty button.icon-btn.save:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+  button.icon-btn[disabled], button.icon-btn[disabled]:hover {
+    background: transparent; border-color: transparent; color: var(--muted);
+  }
+  tr.dirty button.icon-btn.save[disabled], tr.dirty button.icon-btn.save[disabled]:hover {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+  }
+  button.icon-btn.is-busy { cursor: progress; }
+  button.icon-btn.is-busy > svg { visibility: hidden; }
+  button.icon-btn.is-busy::after { display: none; }
+  button.icon-btn.is-busy::before {
+    content: ''; position: absolute; width: 13px; height: 13px; border-radius: 999px;
+    border: 2px solid currentColor; border-top-color: transparent;
+    animation: icon-spin 0.6s linear infinite;
+  }
+  @keyframes icon-spin { to { transform: rotate(360deg); } }
+
+  .tip { position: relative; }
+  .tip::after {
+    content: attr(data-tip);
+    position: absolute; right: -2px; bottom: calc(100% + 6px);
+    background: #22262c; color: #fff; font-size: 11px; font-weight: 500; line-height: 1.5;
+    padding: 3px 8px; border-radius: 5px; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.12s ease; z-index: 30;
+    box-shadow: 0 2px 8px rgba(16, 24, 40, 0.18);
+  }
+  .tip:hover::after, .tip:focus-visible::after { opacity: 1; }
+  @media (hover: none) { .tip::after { display: none; } }
   .actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
   .actions form { margin: 0; }
 
@@ -142,6 +185,17 @@
   .meter { height: 6px; border-radius: 999px; background: #e9ecef; overflow: hidden; margin-top: 8px; }
   .meter > span { display: block; height: 100%; background: var(--accent); transition: width 0.3s ease; }
   .meter.over > span { background: var(--danger); }
+  .meter-row { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
+  .meter-row .meter { flex: 1; margin-top: 0; }
+  .meter-pct { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .meter-pct.over { color: var(--danger); font-weight: 600; }
+  .card-head { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+  .card-head h2 { margin: 0; }
+  .card-foot { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
 
   .alert {
     background: var(--danger-soft); border: 1px solid var(--danger-line); color: var(--danger);
@@ -160,7 +214,7 @@
   .auth-foot { font-size: 14px; color: var(--muted); margin: 16px 0 0; text-align: center; }
 
   .toast {
-    position: fixed; bottom: 16px; right: 16px; z-index: 50; max-width: 360px;
+    position: fixed; top: 72px; right: 16px; z-index: 50; max-width: 360px;
     display: flex; gap: 10px; align-items: flex-start;
     padding: 11px 14px; border-radius: 9px; font-size: 14px; border: 1px solid;
     box-shadow: 0 8px 28px rgba(16, 24, 40, 0.14); animation: toast-in 0.18s ease-out;
@@ -172,14 +226,14 @@
     padding: 0 0 0 6px; cursor: pointer;
   }
   .toast-close:hover { background: none; opacity: 0.6; }
-  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
 
   @media (max-width: 640px) {
     .topbar { padding: 0 16px; }
     main { padding: 22px 16px 48px; }
     .card { padding: 16px; }
     .auth { margin-top: 32px; }
-    .toast { left: 16px; right: 16px; max-width: none; }
+    .toast { top: 64px; left: 16px; right: 16px; max-width: none; }
   }
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -212,25 +266,37 @@
 </main>
 <script>
 (function () {
-  function buttonsOf(form) {
-    return Array.prototype.slice.call(form.querySelectorAll('button'));
+  function controlsOf(form) {
+    return Array.prototype.slice.call(form.elements || []);
   }
 
   function lock(form) {
     form.setAttribute('aria-busy', 'true');
 
-    var buttons = buttonsOf(form);
+    var controls = controlsOf(form);
 
-    buttons.forEach(function (button) {
-      if (!button.getAttribute('data-idle-label')) {
-        button.setAttribute('data-idle-label', button.textContent);
+    controls.forEach(function (control) {
+      if (control.tagName !== 'BUTTON') {
+        control.classList.add('is-busy-field');
+        return;
       }
-      button.textContent = 'Loading…';
+
+      if (control.classList.contains('icon-btn')) {
+        control.classList.add('is-busy');
+        return;
+      }
+
+      if (!control.getAttribute('data-idle-label')) {
+        control.setAttribute('data-idle-label', control.textContent);
+      }
+      control.textContent = 'Loading…';
     });
 
     window.setTimeout(function () {
-      buttons.forEach(function (button) {
-        button.disabled = true;
+      controls.forEach(function (control) {
+        if (control.tagName === 'BUTTON') {
+          control.disabled = true;
+        }
       });
     }, 0);
   }
@@ -239,13 +305,20 @@
     form.removeAttribute('aria-busy');
     form.removeAttribute('data-submitting');
 
-    buttonsOf(form).forEach(function (button) {
-      button.disabled = false;
+    controlsOf(form).forEach(function (control) {
+      control.classList.remove('is-busy-field');
 
-      var label = button.getAttribute('data-idle-label');
+      if (control.tagName !== 'BUTTON') {
+        return;
+      }
+
+      control.disabled = false;
+      control.classList.remove('is-busy');
+
+      var label = control.getAttribute('data-idle-label');
 
       if (label) {
-        button.textContent = label;
+        control.textContent = label;
       }
     });
   }
