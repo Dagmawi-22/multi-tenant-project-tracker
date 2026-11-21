@@ -47,7 +47,7 @@
     <span class="spacer"></span>
     <form method="get" class="filter">
       <label for="f-priority">Priority</label>
-      <select id="f-priority" name="priority" onchange="this.form.submit()">
+      <select id="f-priority" name="priority" data-autosubmit>
         <option value="">All</option>
         {{#each priorityOptions}}
           <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>

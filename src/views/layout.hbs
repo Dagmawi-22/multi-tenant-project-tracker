@@ -56,6 +56,10 @@
   .navlink { color: var(--muted); font-size: 13px; }
   .navlink:hover { color: var(--text); text-decoration: none; }
   .who { color: var(--muted); font-size: 13px; }
+  .nav { display: flex; align-items: center; gap: 14px; }
+  .nav form { margin: 0; }
+  .nav-check { display: none; }
+  .topbar .nav-toggle, .topbar .nav-close, .nav-scrim { display: none; }
 
   main { max-width: 960px; margin: 0 auto; padding: 28px 20px 64px; }
   h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.015em; }
@@ -177,14 +181,14 @@
   button[disabled]:hover, .btn[disabled]:hover { background: var(--accent); border-color: var(--accent); }
   form[aria-busy='true'] input, form[aria-busy='true'] select { opacity: 0.7; pointer-events: none; }
   .is-busy-field { opacity: 0.7; pointer-events: none; }
-  button.icon-btn {
+  .icon-btn {
     position: relative;
-    width: 30px; height: 30px; padding: 0; border-radius: var(--radius-sm);
-    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; margin: 0; padding: 0; border-radius: var(--radius-sm);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
     background: transparent; border: 1px solid transparent; color: var(--muted);
   }
-  button.icon-btn svg { width: 15px; height: 15px; display: block; }
-  button.icon-btn:hover { background: var(--sunken); border-color: var(--border); color: var(--text); }
+  .icon-btn svg { width: 15px; height: 15px; display: block; }
+  .icon-btn:hover { background: var(--sunken); border-color: var(--border); color: var(--text); }
   button.icon-btn.save:hover { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
   button.icon-btn.remove:hover { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger); }
   tr.dirty button.icon-btn.save { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -245,6 +249,24 @@
     background: var(--danger-soft); border: 1px solid var(--danger-line); color: var(--danger);
     padding: 10px 12px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 14px;
   }
+  tbody[hidden] { display: none; }
+  .skeleton-body td { padding-top: 16px; padding-bottom: 17px; }
+  .skeleton-body tr:hover td { background: transparent; }
+  .skeleton-list .skeleton-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 0; border-top: 1px solid var(--border);
+  }
+  .skeleton-list .skeleton-row:first-child { border-top: none; }
+  .bar {
+    display: block; height: 11px; border-radius: 999px;
+    background-color: #e9edf1;
+    background-image: linear-gradient(
+      90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 150% 100%; background-repeat: no-repeat; background-position: -60% 0;
+    animation: bar-shimmer 1.2s ease-in-out infinite;
+  }
+  @keyframes bar-shimmer { to { background-position: 150% 0; } }
   .empty {
     color: var(--muted); font-size: 14px; text-align: center; margin: 0;
     padding: 22px 14px; background: var(--sunken);
@@ -274,6 +296,56 @@
 
   @media (max-width: 640px) {
     .topbar { padding: 0 16px; }
+    .topbar-inner { flex-wrap: nowrap; gap: 10px; }
+    .brand { flex: none; }
+    .org-pill {
+      flex: 0 1 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .nav-check {
+      display: block; position: absolute; width: 1px; height: 1px;
+      margin: -1px; padding: 0; border: 0; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; appearance: none; -webkit-appearance: none;
+    }
+    .topbar .nav-toggle { display: inline-flex; flex: none; margin: 0 -6px 0 0; }
+    .topbar .nav-close { display: inline-flex; order: -2; align-self: flex-end; margin: -4px -6px 2px 0; }
+    .nav-check:focus-visible ~ .nav-toggle {
+      outline: 2px solid var(--accent); outline-offset: 2px;
+      background: var(--sunken); color: var(--text);
+    }
+    .nav {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 60;
+      width: min(290px, 80vw);
+      flex-direction: column; align-items: stretch; gap: 0;
+      padding: 14px 16px calc(22px + env(safe-area-inset-bottom));
+      background: var(--surface); border-left: 1px solid var(--border);
+      box-shadow: -10px 0 30px rgba(16, 24, 40, 0.16);
+      overflow-y: auto; overscroll-behavior: contain;
+      visibility: hidden; transform: translateX(100%);
+      transition: transform 0.22s ease, visibility 0s linear 0.22s;
+    }
+    .nav-check:checked ~ .nav {
+      visibility: visible; transform: none;
+      transition: transform 0.22s ease, visibility 0s linear 0s;
+    }
+    .nav .who {
+      order: -1; font-size: 11px; font-weight: 650;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      padding: 0 2px 10px;
+    }
+    .nav .navlink {
+      font-size: 15px; color: var(--text);
+      padding: 12px 2px; border-top: 1px solid var(--border);
+    }
+    .nav form { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .nav form button { width: 100%; }
+    .nav-scrim {
+      display: block; position: fixed; inset: 0; z-index: 55;
+      background: rgba(16, 24, 40, 0.34);
+      opacity: 0; pointer-events: none; transition: opacity 0.22s ease;
+    }
+    .nav-check:checked ~ .nav-scrim { opacity: 1; pointer-events: auto; }
+    html:has(.nav-check:checked), html:has(.nav-check:checked) body { overflow: hidden; }
     main { padding: 22px 16px 48px; }
     .card { padding: 16px; }
     .auth { margin-top: 32px; }
@@ -288,14 +360,24 @@
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="/">Project Tracker</a>
-    {{#if currentOrg}}<span class="pill">{{currentOrg.name}}</span>{{/if}}
+    {{#if currentOrg}}<span class="pill org-pill">{{currentOrg.name}}</span>{{/if}}
     <span class="spacer"></span>
     {{#if currentUser}}
-      <a class="navlink" href="/orgs">Organizations</a>
-      <span class="who">{{currentUser.name}}</span>
-      <form method="post" action="/logout" style="margin:0">
-        <button class="secondary small" type="submit">Sign out</button>
-      </form>
+      <input class="nav-check" id="nav-check" type="checkbox" aria-label="Menu">
+      <label class="icon-btn nav-toggle" for="nav-check" aria-hidden="true">
+        <svg viewBox="0 0 15 15"><path d="M1.5 3.75h12M1.5 7.5h12M1.5 11.25h12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </label>
+      <nav class="nav" id="site-nav" aria-label="Main">
+        <label class="icon-btn nav-close" for="nav-check" aria-hidden="true">
+          <svg viewBox="0 0 15 15"><path d="M3.75 3.75l7.5 7.5M11.25 3.75l-7.5 7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </label>
+        <a class="navlink" href="/orgs">Organizations</a>
+        <span class="who">{{currentUser.name}}</span>
+        <form method="post" action="/logout">
+          <button class="secondary small" type="submit">Sign out</button>
+        </form>
+      </nav>
+      <label class="nav-scrim" for="nav-check" aria-hidden="true"></label>
     {{/if}}
   </div>
 </header>
@@ -450,6 +532,193 @@
     }
   });
 
+  var filterForm = document.querySelector('form.filter');
+  var restoreTasks = null;
+
+  if (filterForm) {
+    var tasksCard = filterForm.closest('.card');
+    var barWidths = ['68%', '58%', '52%', '74%', '46%', '15px', '15px'];
+
+    var makeBar = function (width) {
+      var bar = document.createElement('span');
+      bar.className = 'bar';
+      bar.style.width = width;
+      return bar;
+    };
+
+    var skeletonBody = function (columns, rows) {
+      var body = document.createElement('tbody');
+      body.className = 'skeleton-body';
+      body.setAttribute('aria-hidden', 'true');
+
+      for (var r = 0; r < rows; r += 1) {
+        var row = body.insertRow();
+
+        for (var c = 0; c < columns; c += 1) {
+          row.insertCell().appendChild(makeBar(barWidths[c] || '50%'));
+        }
+      }
+
+      return body;
+    };
+
+    var skeletonList = function (rows) {
+      var list = document.createElement('div');
+      list.className = 'skeleton-list';
+      list.setAttribute('aria-hidden', 'true');
+
+      for (var r = 0; r < rows; r += 1) {
+        var row = document.createElement('div');
+        row.className = 'skeleton-row';
+
+        [2, 1, 1, 1].forEach(function (grow) {
+          var bar = makeBar('auto');
+          bar.style.flex = grow + ' 1 0';
+          row.appendChild(bar);
+        });
+
+        list.appendChild(row);
+      }
+
+      return list;
+    };
+
+    var countColumns = function (table) {
+      return Array.prototype.slice.call(table.tHead.rows[0].cells).reduce(function (total, cell) {
+        return total + cell.colSpan;
+      }, 0);
+    };
+
+    var showTasksSkeleton = function () {
+      if (restoreTasks || !tasksCard) {
+        return;
+      }
+
+      var table = tasksCard.querySelector('.table-wrap table');
+      var empty = tasksCard.querySelector('.empty');
+      var skeleton;
+      var hidden;
+
+      if (table && table.tHead && table.tBodies.length) {
+        hidden = table.tBodies[0];
+        skeleton = skeletonBody(countColumns(table), Math.min(Math.max(hidden.rows.length, 3), 6));
+        table.appendChild(skeleton);
+      } else if (empty) {
+        hidden = empty;
+        skeleton = skeletonList(3);
+        empty.parentNode.insertBefore(skeleton, empty);
+      } else {
+        return;
+      }
+
+      hidden.hidden = true;
+      tasksCard.setAttribute('aria-busy', 'true');
+
+      var status = document.createElement('p');
+      status.className = 'sr-only';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Loading tasks\u2026';
+      tasksCard.appendChild(status);
+
+      restoreTasks = function () {
+        skeleton.remove();
+        status.remove();
+        hidden.hidden = false;
+        tasksCard.removeAttribute('aria-busy');
+      };
+    };
+
+    var autoSubmit = filterForm.querySelector('[data-autosubmit]');
+
+    if (autoSubmit) {
+      autoSubmit.addEventListener('change', function () {
+        showTasksSkeleton();
+
+        if (filterForm.requestSubmit) {
+          filterForm.requestSubmit();
+        } else {
+          filterForm.submit();
+        }
+      });
+    }
+  }
+
+  var navCheck = document.getElementById('nav-check');
+  var nav = document.getElementById('site-nav');
+
+  if (navCheck && nav) {
+    var narrow = window.matchMedia('(max-width: 640px)');
+
+    var navItems = function () {
+      return Array.prototype.slice.call(nav.querySelectorAll('a[href], button:not([disabled])'));
+    };
+
+    var closeNav = function (restoreFocus) {
+      if (!navCheck.checked) {
+        return;
+      }
+
+      navCheck.checked = false;
+
+      if (restoreFocus) {
+        navCheck.focus();
+      }
+    };
+
+    navCheck.addEventListener('change', function () {
+      if (!navCheck.checked) {
+        return;
+      }
+
+      var first = navItems()[0];
+
+      if (first) {
+        first.focus();
+      }
+    });
+
+    nav.addEventListener('click', function (event) {
+      if (event.target && event.target.closest && event.target.closest('a[href]')) {
+        closeNav(false);
+      }
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        closeNav(true);
+        return;
+      }
+
+      if (event.key !== 'Tab' || !navCheck.checked) {
+        return;
+      }
+
+      var items = [navCheck].concat(navItems());
+      var first = items[0];
+      var last = items[items.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+
+    var onViewportChange = function () {
+      if (!narrow.matches) {
+        closeNav(false);
+      }
+    };
+
+    if (narrow.addEventListener) {
+      narrow.addEventListener('change', onViewportChange);
+    } else if (narrow.addListener) {
+      narrow.addListener(onViewportChange);
+    }
+  }
+
   var toast = document.querySelector('.toast');
 
   if (toast) {
@@ -469,8 +738,15 @@
   }
 
   window.addEventListener('pageshow', function (event) {
-    if (event.persisted) {
-      Array.prototype.slice.call(document.querySelectorAll('form')).forEach(unlock);
+    if (!event.persisted) {
+      return;
+    }
+
+    Array.prototype.slice.call(document.querySelectorAll('form')).forEach(unlock);
+
+    if (restoreTasks) {
+      restoreTasks();
+      restoreTasks = null;
     }
   });
 })();
