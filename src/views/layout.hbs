@@ -249,6 +249,24 @@
     background: var(--danger-soft); border: 1px solid var(--danger-line); color: var(--danger);
     padding: 10px 12px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 14px;
   }
+  tbody[hidden] { display: none; }
+  .skeleton-body td { padding-top: 16px; padding-bottom: 17px; }
+  .skeleton-body tr:hover td { background: transparent; }
+  .skeleton-list .skeleton-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 0; border-top: 1px solid var(--border);
+  }
+  .skeleton-list .skeleton-row:first-child { border-top: none; }
+  .bar {
+    display: block; height: 11px; border-radius: 999px;
+    background-color: #e9edf1;
+    background-image: linear-gradient(
+      90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 150% 100%; background-repeat: no-repeat; background-position: -60% 0;
+    animation: bar-shimmer 1.2s ease-in-out infinite;
+  }
+  @keyframes bar-shimmer { to { background-position: 150% 0; } }
   .empty {
     color: var(--muted); font-size: 14px; text-align: center; margin: 0;
     padding: 22px 14px; background: var(--sunken);
@@ -514,6 +532,117 @@
     }
   });
 
+  var filterForm = document.querySelector('form.filter');
+  var restoreTasks = null;
+
+  if (filterForm) {
+    var tasksCard = filterForm.closest('.card');
+    var barWidths = ['68%', '58%', '52%', '74%', '46%', '15px', '15px'];
+
+    var makeBar = function (width) {
+      var bar = document.createElement('span');
+      bar.className = 'bar';
+      bar.style.width = width;
+      return bar;
+    };
+
+    var skeletonBody = function (columns, rows) {
+      var body = document.createElement('tbody');
+      body.className = 'skeleton-body';
+      body.setAttribute('aria-hidden', 'true');
+
+      for (var r = 0; r < rows; r += 1) {
+        var row = body.insertRow();
+
+        for (var c = 0; c < columns; c += 1) {
+          row.insertCell().appendChild(makeBar(barWidths[c] || '50%'));
+        }
+      }
+
+      return body;
+    };
+
+    var skeletonList = function (rows) {
+      var list = document.createElement('div');
+      list.className = 'skeleton-list';
+      list.setAttribute('aria-hidden', 'true');
+
+      for (var r = 0; r < rows; r += 1) {
+        var row = document.createElement('div');
+        row.className = 'skeleton-row';
+
+        [2, 1, 1, 1].forEach(function (grow) {
+          var bar = makeBar('auto');
+          bar.style.flex = grow + ' 1 0';
+          row.appendChild(bar);
+        });
+
+        list.appendChild(row);
+      }
+
+      return list;
+    };
+
+    var countColumns = function (table) {
+      return Array.prototype.slice.call(table.tHead.rows[0].cells).reduce(function (total, cell) {
+        return total + cell.colSpan;
+      }, 0);
+    };
+
+    var showTasksSkeleton = function () {
+      if (restoreTasks || !tasksCard) {
+        return;
+      }
+
+      var table = tasksCard.querySelector('.table-wrap table');
+      var empty = tasksCard.querySelector('.empty');
+      var skeleton;
+      var hidden;
+
+      if (table && table.tHead && table.tBodies.length) {
+        hidden = table.tBodies[0];
+        skeleton = skeletonBody(countColumns(table), Math.min(Math.max(hidden.rows.length, 3), 6));
+        table.appendChild(skeleton);
+      } else if (empty) {
+        hidden = empty;
+        skeleton = skeletonList(3);
+        empty.parentNode.insertBefore(skeleton, empty);
+      } else {
+        return;
+      }
+
+      hidden.hidden = true;
+      tasksCard.setAttribute('aria-busy', 'true');
+
+      var status = document.createElement('p');
+      status.className = 'sr-only';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Loading tasks\u2026';
+      tasksCard.appendChild(status);
+
+      restoreTasks = function () {
+        skeleton.remove();
+        status.remove();
+        hidden.hidden = false;
+        tasksCard.removeAttribute('aria-busy');
+      };
+    };
+
+    var autoSubmit = filterForm.querySelector('[data-autosubmit]');
+
+    if (autoSubmit) {
+      autoSubmit.addEventListener('change', function () {
+        showTasksSkeleton();
+
+        if (filterForm.requestSubmit) {
+          filterForm.requestSubmit();
+        } else {
+          filterForm.submit();
+        }
+      });
+    }
+  }
+
   var navCheck = document.getElementById('nav-check');
   var nav = document.getElementById('site-nav');
 
@@ -609,8 +738,15 @@
   }
 
   window.addEventListener('pageshow', function (event) {
-    if (event.persisted) {
-      Array.prototype.slice.call(document.querySelectorAll('form')).forEach(unlock);
+    if (!event.persisted) {
+      return;
+    }
+
+    Array.prototype.slice.call(document.querySelectorAll('form')).forEach(unlock);
+
+    if (restoreTasks) {
+      restoreTasks();
+      restoreTasks = null;
     }
   });
 })();
